@@ -11,12 +11,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openide.util.Exceptions;
 
 /**
  *
@@ -124,6 +130,48 @@ public class OllamaHelpers {
             Logger.getLogger(OllamaHelpers.class.getName()).log(Level.SEVERE, null, ex);
         }
        return responseJ;
+    }
+    
+      public static String[] fetchModelNames()  {
+          
+        try {
+            // API endpoint URL
+            String url =  OLLAMA_EP+"/api/tags";
+            
+            // Create an HttpClient
+            HttpClient client = HttpClient.newHttpClient();
+            
+            // Create an HttpRequest
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+            
+            // Send the request and get the response
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            // Parse JSON using JSONObject from json.org
+            JSONObject jsonObject = new JSONObject(response.body());
+            JSONArray modelsArray = jsonObject.getJSONArray("models");
+            
+            // Create a list to store the names
+            List<String> namesList = new ArrayList<>();
+            
+            // Iterate over the models array and get the "name" field
+            for (int i = 0; i < modelsArray.length(); i++) {
+                JSONObject modelObject = modelsArray.getJSONObject(i);
+                String name = modelObject.getString("name");
+                namesList.add(name);
+            }
+            
+            // Convert list to array and return
+            return namesList.toArray(new String[0]);
+        } catch (IOException ex) {
+            Exceptions.printStackTrace(ex);
+        } catch (InterruptedException ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return new String[]{};
     }
     
 }

@@ -209,9 +209,9 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.insets = new Insets(0, 5, 5, 5);
-        String[] models = {"gpt-3.5-turbo-1106","gpt-3.5-turbo-16k-0613", "gpt-4o"};
+        String[] models = OllamaHelpers.fetchModelNames();//{"gpt-3.5-turbo-1106","gpt-3.5-turbo-16k-0613", "gpt-4o"};
         modelSelection = new JComboBox<>(models);
-        modelSelection.setSelectedItem("gpt-4o");
+        modelSelection.setSelectedItem(models[0]);
         buttonPanel.add(modelSelection, gbc);
         gbc.gridy++;
         JButton resetButton = createResetButton();
