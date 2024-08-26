@@ -278,13 +278,15 @@ public class ChatTopComponent extends TopComponent {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                callChatGPT(userInput);
+                final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
+                messages.add(userMessage);
+                appendToOutputDocument(OllamaHelpers.callLLMChat(null, "llama3.1", messages, null).getJSONObject("message").getString("content"));
+                //callChatGPT(userInput);
                 return null;
             }
 
             private void callChatGPT(String userInput) {
-                final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
-                messages.add(userMessage);
+               
                 appendToOutputDocument("User: ");
                 appendToOutputDocument(System.lineSeparator());
                 appendToOutputDocument(userInput);
