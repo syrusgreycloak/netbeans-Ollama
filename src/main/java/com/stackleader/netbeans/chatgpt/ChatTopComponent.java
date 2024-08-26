@@ -280,7 +280,7 @@ public class ChatTopComponent extends TopComponent {
             protected Void doInBackground() throws Exception {
                 final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
                 messages.add(userMessage);
-                appendToOutputDocument(OllamaHelpers.callLLMChat(null, "llama3.1", messages, null).getJSONObject("message").getString("content"));
+                appendToOutputDocument(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
                 //callChatGPT(userInput);
                 return null;
             }
