@@ -15,6 +15,9 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.event.ActionEvent;
@@ -286,9 +289,9 @@ public class ChatTopComponent extends TopComponent {
                 appendToOutputDocument(System.lineSeparator());
                 if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel)) {
                     
-                    appendToOutputDocument("Ollama("+selectedModel+"):");
+                    appendToOutputDocument("Ollama("+selectedModel+"): responding...");
 
-                    appendToOutputDocument(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
+                    appendToOutputDocumentOllama(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
                     //
                     return null;
                 } else {
@@ -358,7 +361,88 @@ public class ChatTopComponent extends TopComponent {
         worker.execute();
         inputTextArea.setText("");
     }
+    
+     // Method to append content to outputTextArea and handle code annotations
+    private void appendToOutputDocumentOllama(String content) {
+        // Split the content by code block marker (```)
+        String[] parts = content.split("```");
+        
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
 
+            if (i % 2 == 0) {
+                // Even index: regular text (outside code blocks)
+                appendText(part);
+            } else {
+                // Odd index: code block
+                appendCodeBlock("```" + part + "```");
+                 showCodeInPopup(part) ;
+            }
+        }
+    }
+
+    // Method to append text to the outputTextArea
+    private void appendText(String text) {
+        SwingUtilities.invokeLater(() -> {
+            outputTextArea.append(text);
+        });
+    }
+    
+    // Method to show the identified code in a JOptionPane popup with "Copy to Clipboard" option
+    private void showCodeInPopup(String code) {
+        SwingUtilities.invokeLater(() -> {
+            // Custom buttons for the dialog
+            Object[] options = {"Copy to Clipboard", "Close"};
+
+            // Show the option dialog with the provided code block
+            int result = JOptionPane.showOptionDialog(
+                    null, code, "Code Block Detected",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null, options, options[0]
+            );
+
+            // Handle the user's selection
+            if (result == JOptionPane.YES_OPTION) {
+                copyToClipboard(code);
+                JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+    }
+    
+        // Method to copy code to the system clipboard
+    private void copyToClipboard(String code) {
+        StringSelection stringSelection = new StringSelection(code);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(stringSelection, null);
+    }
+
+    // Method to append code block with annotation to the outputTextArea
+    private void appendCodeBlock(String codeBlock) {
+        if (shouldAnnotateCodeBlock) {
+            int newlinePos = codeBlock.indexOf("\n");
+
+            // If a newline character is found, insert the annotation before it
+            if (newlinePos != -1) {
+                String beforeNewline = codeBlock.substring(0, newlinePos);
+                String afterNewline = codeBlock.substring(newlinePos);
+                SwingUtilities.invokeLater(() -> {
+                    outputTextArea.append(beforeNewline + " " + QUICK_COPY_TEXT + afterNewline);
+                });
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    outputTextArea.append(codeBlock + " " + QUICK_COPY_TEXT);
+                });
+            }
+            shouldAnnotateCodeBlock = false;
+        } else {
+            SwingUtilities.invokeLater(() -> {
+                outputTextArea.append(codeBlock);
+            });
+            shouldAnnotateCodeBlock = true;
+        }
+    }
+    
     private void appendToOutputDocument(String content) {
         if (content.startsWith("```")) {
             if (shouldAnnotateCodeBlock) {

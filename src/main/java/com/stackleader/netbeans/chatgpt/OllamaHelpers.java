@@ -36,6 +36,12 @@ public class OllamaHelpers {
     
     public static final Set<String> OLLAMA_MODELS=new HashSet();
     
+    static{
+        //LLM Settings        
+        String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
+        if(value_name!=null) OLLAMA_EP=value_name;
+    }
+    
     public static JSONObject callLLMChat(String prompt, String model,List<ChatMessage> messages_raw, JSONArray tools)   {
          JSONArray messages=new JSONArray();
          
