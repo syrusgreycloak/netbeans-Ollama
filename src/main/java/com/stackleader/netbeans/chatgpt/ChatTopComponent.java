@@ -209,7 +209,7 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.insets = new Insets(0, 5, 5, 5);
-        String[] models = OllamaHelpers.fetchModelNames();//{"gpt-3.5-turbo-1106","gpt-3.5-turbo-16k-0613", "gpt-4o"};
+        String[] models =OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(),new String[]{"gpt-3.5-turbo-1106","gpt-3.5-turbo-16k-0613", "gpt-4o"});
         modelSelection = new JComboBox<>(models);
         modelSelection.setSelectedItem(models[0]);
         buttonPanel.add(modelSelection, gbc);
@@ -280,17 +280,25 @@ public class ChatTopComponent extends TopComponent {
             protected Void doInBackground() throws Exception {
                 final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
                 messages.add(userMessage);
-                appendToOutputDocument(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
-                //callChatGPT(userInput);
+                 appendToOutputDocument("User: ");
+                appendToOutputDocument(System.lineSeparator());
+                appendToOutputDocument(userInput);
+                appendToOutputDocument(System.lineSeparator());
+                if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel)) {
+                    
+                    appendToOutputDocument("Ollama("+selectedModel+"):");
+
+                    appendToOutputDocument(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
+                    //
+                    return null;
+                } else {
+                    callChatGPT(userInput);
+
+                }
                 return null;
             }
 
             private void callChatGPT(String userInput) {
-               
-                appendToOutputDocument("User: ");
-                appendToOutputDocument(System.lineSeparator());
-                appendToOutputDocument(userInput);
-                appendToOutputDocument(System.lineSeparator());
                 // Create chat completion request
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest
                         .builder()

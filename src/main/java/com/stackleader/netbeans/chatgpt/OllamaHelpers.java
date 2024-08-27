@@ -17,7 +17,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.json.JSONArray;
@@ -31,6 +33,8 @@ import org.openide.util.Exceptions;
 public class OllamaHelpers {
     
     static String OLLAMA_EP="http://localhost:11434";
+    
+    public static final Set<String> OLLAMA_MODELS=new HashSet();
     
     public static JSONObject callLLMChat(String prompt, String model,List<ChatMessage> messages_raw, JSONArray tools)   {
          JSONArray messages=new JSONArray();
@@ -162,6 +166,7 @@ public class OllamaHelpers {
                 JSONObject modelObject = modelsArray.getJSONObject(i);
                 String name = modelObject.getString("name");
                 namesList.add(name);
+                OLLAMA_MODELS.add(name);
             }
             
             // Convert list to array and return
@@ -172,6 +177,20 @@ public class OllamaHelpers {
             Exceptions.printStackTrace(ex);
         }
         return new String[]{};
+    }
+      
+    public static String[] mergeArrays(String[] array1, String[] array2) {
+        // Create a new array with a size equal to the sum of both arrays
+        String[] mergedArray = new String[array1.length + array2.length];
+
+        // Copy the elements of the first array into the merged array
+        System.arraycopy(array1, 0, mergedArray, 0, array1.length);
+
+        // Copy the elements of the second array into the merged array
+        System.arraycopy(array2, 0, mergedArray, array1.length, array2.length);
+
+        // Return the merged array
+        return mergedArray;
     }
     
 }
