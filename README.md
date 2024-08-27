@@ -16,3 +16,16 @@ Incase you key is incorrect for OpenAI, you get this error. This integration is 
 3. Click on the `Downloaded` tab.
 4. Click on the `Add Plugins...` button and select the compiled plugin.
 5. Restart NetBeans
+
+## Customizations
+In OS environment variable if "LLM_OLLAMA_HOST" is present, then this will override the url "http://localhost:11434" that points to local Ollama endpoint.
+
+This is what is happening inside plugin code:
+
+static String OLLAMA_EP="http://localhost:11434";
+ 
+static{
+        //LLM Settings        
+        String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
+        if(value_name!=null) OLLAMA_EP=value_name;
+    }
