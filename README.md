@@ -2,9 +2,12 @@
 
 Credits to orginal Plugin [https://github.com/Hillrunner2008/netbeans-chatgpt](https://github.com/Hillrunner2008/netbeans-chatgpt)
 
-This plugin allows you to use Ollama APIs to generate chat responses directly in NetBeans. I'll probably add some editor context menu actions to speed up code suggestions, but for now its a simple UI for chat that lives in Netbeans.
+This plugin allows you to use Ollama and OpenAI APIs to generate chat responses directly in NetBeans. I'll probably add some editor context menu actions to speed up code suggestions, but for now its a simple UI for chat that lives in Netbeans.
 
-![Screenshot](screenshots/demoOllama.png)
+![Screenshot](screenshots/OpenAIAndOllama.png)
+
+Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
+![Screenshot](screenshots/OpenAIKeyError.png)
 
 ## Installation
 
