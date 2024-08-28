@@ -363,10 +363,11 @@ public class ChatTopComponent extends TopComponent {
     }
     
      // Method to append content to outputTextArea and handle code annotations
+     // Method to append content to outputTextArea and show code blocks in pop-ups
     private void appendToOutputDocumentOllama(String content) {
         // Split the content by code block marker (```)
         String[] parts = content.split("```");
-        
+
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
 
@@ -374,9 +375,11 @@ public class ChatTopComponent extends TopComponent {
                 // Even index: regular text (outside code blocks)
                 appendText(part);
             } else {
-                // Odd index: code block
-                appendCodeBlock("```" + part + "```");
-                 showCodeInPopup(part) ;
+                String language=part.split("\\r?\\n")[0];
+                part=part.substring(language.length());
+                // Odd index: code block, show in RSyntaxTextArea with syntax highlighting
+                showCodeInPopup(part.trim(), language);  // Assuming Java for this example
+                appendText(part);
             }
         }
     }
@@ -387,18 +390,29 @@ public class ChatTopComponent extends TopComponent {
             outputTextArea.append(text);
         });
     }
-    
-    // Method to show the identified code in a JOptionPane popup with "Copy to Clipboard" option
-    private void showCodeInPopup(String code) {
-        SwingUtilities.invokeLater(() -> {
-            // Custom buttons for the dialog
-            Object[] options = {"Copy to Clipboard", "Close"};
 
-            // Show the option dialog with the provided code block
+    // Method to show the identified code in RSyntaxTextArea with "Copy to Clipboard" option
+    private void showCodeInPopup(String code, String language) {
+        SwingUtilities.invokeLater(() -> {
+            // Create RSyntaxTextArea with appropriate syntax style
+            RSyntaxTextArea textArea = new RSyntaxTextArea(30, 120);
+            textArea.setText(code);
+            textArea.setEditable(false);
+            textArea.setSyntaxEditingStyle(getSyntaxStyle(language));
+            textArea.setCodeFoldingEnabled(true);
+
+            // Create a scroll pane for the text area
+            RTextScrollPane scrollPane = new RTextScrollPane(textArea);
+            scrollPane.setFoldIndicatorEnabled(true);
+
+            // Create custom buttons for the dialog
+            Object[] options = {"Copy", "Close"};
+
+            // Show the dialog with RSyntaxTextArea embedded
             int result = JOptionPane.showOptionDialog(
-                    null, code, "Code Block Detected",
+                    null, scrollPane, "Code Block Detected ("+language+")",
                     JOptionPane.YES_NO_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE,
+                    JOptionPane.PLAIN_MESSAGE,
                     null, options, options[0]
             );
 
@@ -409,37 +423,33 @@ public class ChatTopComponent extends TopComponent {
             }
         });
     }
-    
-        // Method to copy code to the system clipboard
+
+    // Method to copy code to the system clipboard
     private void copyToClipboard(String code) {
         StringSelection stringSelection = new StringSelection(code);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(stringSelection, null);
     }
 
-    // Method to append code block with annotation to the outputTextArea
-    private void appendCodeBlock(String codeBlock) {
-        if (shouldAnnotateCodeBlock) {
-            int newlinePos = codeBlock.indexOf("\n");
-
-            // If a newline character is found, insert the annotation before it
-            if (newlinePos != -1) {
-                String beforeNewline = codeBlock.substring(0, newlinePos);
-                String afterNewline = codeBlock.substring(newlinePos);
-                SwingUtilities.invokeLater(() -> {
-                    outputTextArea.append(beforeNewline + " " + QUICK_COPY_TEXT + afterNewline);
-                });
-            } else {
-                SwingUtilities.invokeLater(() -> {
-                    outputTextArea.append(codeBlock + " " + QUICK_COPY_TEXT);
-                });
-            }
-            shouldAnnotateCodeBlock = false;
-        } else {
-            SwingUtilities.invokeLater(() -> {
-                outputTextArea.append(codeBlock);
-            });
-            shouldAnnotateCodeBlock = true;
+    // Method to determine syntax style based on language string
+    private String getSyntaxStyle(String language) {
+        switch (language.toLowerCase()) {
+            case "java":
+                return SyntaxConstants.SYNTAX_STYLE_JAVA;
+            case "python":
+                return SyntaxConstants.SYNTAX_STYLE_PYTHON;
+            case "javascript":
+                return SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
+            case "xml":
+                return SyntaxConstants.SYNTAX_STYLE_XML;
+            case "html":
+                return SyntaxConstants.SYNTAX_STYLE_HTML;
+            case "c":
+            case "cpp":
+                return SyntaxConstants.SYNTAX_STYLE_C;
+            // Add more cases as needed for other languages
+            default:
+                return SyntaxConstants.SYNTAX_STYLE_NONE;
         }
     }
     
