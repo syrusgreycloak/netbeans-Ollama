@@ -6,6 +6,10 @@ This plugin allows you to use Ollama and OpenAI APIs to generate chat responses 
 
 ![Screenshot](screenshots/OpenAIAndOllama2.png)
 
+### Code block detection
+
+![Screenshot](screenshots/ollamaCodeDetect.png)
+
 Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
 ![Screenshot](screenshots/OpenAIKeyError.png)
 
