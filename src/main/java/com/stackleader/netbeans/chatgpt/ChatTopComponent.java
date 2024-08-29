@@ -28,19 +28,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
+import javax.swing.text.JTextComponent;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.Gutter;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import org.netbeans.api.editor.EditorRegistry;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.util.ImageUtilities;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import org.openide.cookies.EditorCookie;
+import org.openide.explorer.ExplorerManager;
+import org.openide.util.Utilities;
 
 /**
  *
@@ -281,8 +287,18 @@ public class ChatTopComponent extends TopComponent {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
-                messages.add(userMessage);
+                
+                JTextComponent editorPane = EditorRegistry.lastFocusedComponent();   
+                String selectedText=editorPane.getSelectedText();
+                if(selectedText!=null && (!selectedText.isBlank())){
+                    final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput+"( in context of "+selectedText+")");
+                    messages.add(userMessage);
+                }
+                else{
+                    final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
+                    messages.add(userMessage);
+                }
+                
                  appendToOutputDocument("User: ");
                 appendToOutputDocument(System.lineSeparator());
                 appendToOutputDocument(userInput);
@@ -493,4 +509,7 @@ public class ChatTopComponent extends TopComponent {
             outputTextArea.setText("");
         });
     }
+
+
+
 }
