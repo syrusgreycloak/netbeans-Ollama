@@ -135,5 +135,12 @@
             <artifactId>json</artifactId>
             <version>20180813</version>
         </dependency>
+       
+    <dependency>
+        <groupId>org.netbeans.api</groupId>
+        <artifactId>org-netbeans-modules-editor-lib2</artifactId>
+        <version>RELEASE140</version>
+    </dependency>
+ 
     </dependencies>
 </project>
