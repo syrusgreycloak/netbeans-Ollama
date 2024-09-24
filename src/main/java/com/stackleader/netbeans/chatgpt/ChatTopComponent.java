@@ -26,6 +26,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
 import javax.swing.text.JTextComponent;
@@ -47,6 +48,10 @@ import org.openide.windows.TopComponent;
 import org.openide.cookies.EditorCookie;
 import org.openide.explorer.ExplorerManager;
 import org.openide.util.Utilities;
+import org.openide.filesystems.FileObject;
+import org.openide.util.Lookup;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ui.OpenProjects;
 
 /**
  *
@@ -81,6 +86,8 @@ public class ChatTopComponent extends TopComponent {
     private boolean shouldAnnotateCodeBlock = true;
     private JComboBox<String> modelSelection;
     private OpenAiService service;
+    
+   
 
     public ChatTopComponent() {
         setName(NbBundle.getMessage(ChatTopComponent.class, "Chat_TopComponent_Title")); // NOI18N
@@ -99,8 +106,13 @@ public class ChatTopComponent extends TopComponent {
         }
         addComponentsToFrame();
         service = new OpenAiService(token);
+        
+        //Function calls
+        IDEHelper.registerFunction(new FilesList());
 
     }
+    
+   
 
     private String promptForToken() {
         NotifyDescriptor.InputLine inputLine = new NotifyDescriptor.InputLine(
@@ -288,6 +300,12 @@ public class ChatTopComponent extends TopComponent {
             @Override
             protected Void doInBackground() throws Exception {
                 
+                //Get Project Info
+                // Get the currently opened projects
+                Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+                
+                
+                //Get Editior
                 JTextComponent editorPane = EditorRegistry.lastFocusedComponent();   
                 String selectedText=editorPane.getSelectedText();
                 if(selectedText!=null && (!selectedText.isBlank())){

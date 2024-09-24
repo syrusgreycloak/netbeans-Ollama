@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -16,9 +17,11 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,32 +39,52 @@ public class OllamaHelpers {
     
     public static final Set<String> OLLAMA_MODELS=new HashSet();
     
+    public static final Set<String> OLLAMA_MODELS_TOOLS=new HashSet();
+    
     static{
         //LLM Settings        
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
         if(value_name!=null) OLLAMA_EP=value_name;
+        
+        OLLAMA_MODELS_TOOLS.add("nemotron-mini");
+        OLLAMA_MODELS_TOOLS.add("llama3.1");
     }
     
-    public static JSONObject callLLMChat(String prompt, String model,List<ChatMessage> messages_raw, JSONArray tools)   {
-         JSONArray messages=new JSONArray();
-         
-         messages_raw.forEach(message->{
-             JSONObject messageObject=new JSONObject();
-             messageObject.put("role", message.getRole());
-             messageObject.put("content", message.getContent());
-             messages.put(messageObject);
-             
-         });
-         
-         return callLLMChat(prompt,  model,  messages,  tools);
-    
+    /**
+     * 
+     * @param prompt
+     * @param model
+     * @param messages_raw
+     * @param tools
+     * @return 
+     */
+    public static JSONObject callLLMChat(String prompt, String model, List<ChatMessage> messages_raw, JSONArray tools) {
+
+        JSONArray messages = new JSONArray();
+
+        messages_raw.forEach(message -> {
+            JSONObject messageObject = new JSONObject();
+            messageObject.put("role", message.getRole());
+            messageObject.put("content", message.getContent());
+            messages.put(messageObject);
+
+        });
+
+        if (tools == null) {
+            return callLLMChat(prompt, model, messages, tools);
+        } else if (OLLAMA_MODELS_TOOLS.contains(model)) {
+
+            return callApiAndHandleResponse(model, messages);
+
+        } else {
+            return callLLMChat(prompt, model, messages, tools);
+        }
+
     }
     
     /**
      * Use prompt parameter to moderate the questions is prompt!=null, using the generate
-     *   "options": {
-    "num_ctx": 4096
-  }
+     * "options": {"num_ctx": 4096}
      * @param prompt
      * @param model
      * @param messages
@@ -141,6 +164,151 @@ public class OllamaHelpers {
         }
        return responseJ;
     }
+    
+    
+    /**
+     * 
+     * @param model
+     * @param messagesArray
+     * @return 
+     */
+    
+    public static JSONObject callApiAndHandleResponse( String model,JSONArray messagesArray) {
+    try {
+        // Construct the JSON payload
+        JSONObject payload = new JSONObject();
+        payload.put("model", model);
+
+        if(messagesArray.length()==0){// for first time call
+            JSONObject messageSystemObject = new JSONObject();
+            messageSystemObject.put("role", "system");
+            messageSystemObject.put("content", "You are a helpful customer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user."); //forecast for a location  What is the weather today 
+            messagesArray.put(messageSystemObject);
+        }
+
+        System.out.println(messagesArray.toString());
+
+        // Get the user's message from the text field
+        String userInput = "test"; // Replace with actual input
+
+        JSONObject messageObject = new JSONObject();
+        messageObject.put("role", "user");
+        messageObject.put("content", userInput); //forecast for a location  What is the weather today // JOptionPane.showInputDialog("What is your question?")
+        messagesArray.put(messageObject);
+        payload.put("messages", messagesArray);
+
+        payload.put("stream", false);
+
+        JSONArray toolsArray = new JSONArray();
+
+        // Add each function's JSON to the payload
+        // (Assuming you have a map of FunctionHandlers)
+        for (FunctionHandler handler : IDEHelper.getFunctionHandlers().values()) {
+            JSONObject toolObject = new JSONObject();
+            toolObject.put("type", "function");
+            toolObject.put("function", handler.getFunctionJSON());
+            toolsArray.put(toolObject);
+        }
+
+        payload.put("tools", toolsArray);
+
+        System.out.println(payload.toString(1));
+
+        // URL of the API endpoint
+        String value_name = System.getenv("LLM_OLLAMA_HOST");
+        URL url = new URL(value_name+"/api/chat");
+
+        // Set request method to POST
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json; utf-8");
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setDoOutput(true);
+
+        // Send JSON payload
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = payload.toString().getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+
+        // Handle the response
+        int responseCode = connection.getResponseCode();
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuilder response = new StringBuilder();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            // Parse the JSON response
+            JSONObject jsonResponse = new JSONObject(response.toString());
+
+            // Extract tool calls and execute corresponding functions
+            JSONObject messageObjectResponse = jsonResponse.getJSONObject("message");
+            if(messageObjectResponse.has("tool_calls"))
+            {
+                JSONArray toolCallsArray = messageObjectResponse.getJSONArray("tool_calls");
+
+                for (int i = 0; i < toolCallsArray.length(); i++) {
+                    JSONObject toolCall = toolCallsArray.getJSONObject(i);
+                    JSONObject functionResponse = toolCall.getJSONObject("function");
+                    String functionName = functionResponse.getString("name");
+
+                    // Execute the registered function
+                    FunctionHandler handler = IDEHelper.getFunctionHandlers().get(functionName);
+                    if (handler != null) {
+                        JSONObject arguments = functionResponse.getJSONObject("arguments");
+                        String funcVal=handler.execute(arguments);
+
+                        JSONObject messageObjectT = new JSONObject();
+                        messageObjectT.put("role",  messageObjectResponse.getString("role"));
+                        messageObjectT.put("content", funcVal); //forecast for a location  What is the weather today // JOptionPane.showInputDialog("What is your question?")
+                        messagesArray.put(messageObjectT);
+
+                        //callApiAndHandleResponse( messagesArray);
+                        
+                        return messageObjectT;
+                    } else {
+                        System.out.println("No handler registered for function: " + functionName);
+                    }
+                }
+            }else {
+
+//                System.out.println(messageObjectResponse); // print messageObjectResponse
+//
+//                JSONObject messageObjectT = new JSONObject();
+//                messageObjectT.put("role",  messageObjectResponse.getString("role"));
+//                messageObjectT.put("content", messageObjectResponse.getString("content")); //forecast for a location  What is the weather today // JOptionPane.showInputDialog("What is your question?")
+//                messagesArray.put(messageObjectT);
+//
+//                callApiAndHandleResponse( messagesArray);
+                
+                return messageObjectResponse;
+
+            }
+
+            System.out.println("Response handled successfully");
+        } else {
+            System.out.println("POST request failed with response code: " + responseCode);
+            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuilder response = new StringBuilder();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+            System.out.println(response.toString());
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+        return null;
+}
     
       public static String[] fetchModelNames()  {
           
