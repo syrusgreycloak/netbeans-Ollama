@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openide.util.Exceptions;
@@ -46,8 +47,10 @@ public class OllamaHelpers {
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
         if(value_name!=null) OLLAMA_EP=value_name;
         
-        OLLAMA_MODELS_TOOLS.add("nemotron-mini");
-        OLLAMA_MODELS_TOOLS.add("llama3.1");
+    //    OLLAMA_MODELS_TOOLS.add("nemotron-mini");
+    //    OLLAMA_MODELS_TOOLS.add("llama3.1");
+    //    OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
+    //    OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
     }
     
     /**
@@ -70,9 +73,13 @@ public class OllamaHelpers {
 
         });
 
-        if (tools == null) {
-            return callLLMChat(prompt, model, messages, tools);
-        } else if (OLLAMA_MODELS_TOOLS.contains(model)) {
+//        if (tools == null) {
+//            return callLLMChat(prompt, model, messages, tools);
+//        } else
+            if (OLLAMA_MODELS_TOOLS.contains(model)) {
+                
+                // Show the dialog with RSyntaxTextArea embedded
+             JOptionPane.showMessageDialog(null,"callApiAndHandleResponse(model, messages)");  
 
             return callApiAndHandleResponse(model, messages);
 
@@ -179,12 +186,12 @@ public class OllamaHelpers {
         JSONObject payload = new JSONObject();
         payload.put("model", model);
 
-        if(messagesArray.length()==0){// for first time call
+        //if(messagesArray.length()==0){// for first time call
             JSONObject messageSystemObject = new JSONObject();
             messageSystemObject.put("role", "system");
             messageSystemObject.put("content", "You are a helpful customer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user."); //forecast for a location  What is the weather today 
             messagesArray.put(messageSystemObject);
-        }
+       // }
 
         System.out.println(messagesArray.toString());
 
