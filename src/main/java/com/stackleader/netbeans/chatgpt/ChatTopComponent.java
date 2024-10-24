@@ -1,5 +1,7 @@
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.store.ChatSimilarityResult;
+import com.redbus.store.MapDBVectorStore;
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -24,6 +26,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +89,7 @@ public class ChatTopComponent extends TopComponent {
     private boolean shouldAnnotateCodeBlock = true;
     private JComboBox<String> modelSelection;
     private OpenAiService service;
+    MapDBVectorStore store;
     
    
 
@@ -109,6 +113,24 @@ public class ChatTopComponent extends TopComponent {
         
         //Function calls
         IDEHelper.registerFunction(new FilesList());
+        
+        //Initiate Vector Store
+        store = new MapDBVectorStore("MKVECOLLAMA.db");
+        
+        String currentDirectory = System.getProperty("user.dir");
+        appendText("Plugin working directory: "+currentDirectory+"\n");
+        appendText("Vector store : MKVECOLLAMA.db \n");
+        
+        
+         
+        //Get Project Info
+        // Get the currently opened projects
+        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+        appendText("Open Projects that I can access:");
+        for(Project project:openProjects){
+           // JOptionPane.showConfirmDialog(outputTextArea,"Open Projects: "+ OpenProjects.getDefault().getOpenProjects()[0].getProjectDirectory().getPath());//Testing here
+        appendText(project.getProjectDirectory().getName()+":"+project.getProjectDirectory().getPath()+"\n");
+        }
 
     }
     
@@ -240,6 +262,9 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridy++;
         JButton submitButton = createSubmitButton();
         buttonPanel.add(submitButton, gbc);
+        gbc.gridy++;
+        buttonPanel.add(createChatHistoryButton(),gbc);//To load history
+        
         return buttonPanel;
     }
 
@@ -260,6 +285,44 @@ public class ChatTopComponent extends TopComponent {
             @Override
             public void actionPerformed(ActionEvent e) {
                 submit();
+            }
+        });
+        return submitButton;
+    }
+    
+    
+    private JButton createIndexButton() {
+        final JButton submitButton = createButton("Index Project");
+        submitButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                submit();
+            }
+        });
+        return submitButton;
+    }
+    
+    private JButton createChatHistoryButton() {
+        final JButton submitButton = createButton("Search History");
+        submitButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String userInput = inputTextArea.getText();
+                
+                if(!userInput.isBlank()){
+                 List<String> chat1 = Arrays.asList(userInput);
+                double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                List<ChatSimilarityResult> chats=store.findSimilarChats(embedding1, 0.7, 3);
+                chats.forEach(chatresult->{
+                    List<String> kvChats=store.getChat(chatresult.getChatId());
+                    kvChats.forEach(chat->{
+                        appendToOutputDocumentOllama(chat );
+                    });
+                    
+                });
+                } else {
+                    JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
+                }
             }
         });
         return submitButton;
@@ -299,14 +362,12 @@ public class ChatTopComponent extends TopComponent {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                
-                //Get Project Info
-                // Get the currently opened projects
-                Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+               
                 
                 
                 //Get Editior
-                JTextComponent editorPane = EditorRegistry.lastFocusedComponent();   
+                JTextComponent editorPane = EditorRegistry.lastFocusedComponent();  
+                
                 String selectedText=editorPane.getSelectedText();
                 if(selectedText!=null && (!selectedText.isBlank())){
                     final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput+"( in context of "+selectedText+")");
@@ -325,8 +386,14 @@ public class ChatTopComponent extends TopComponent {
                     
                     appendToOutputDocument("Ollama("+selectedModel+"): responding...");
 
-                    appendToOutputDocumentOllama(OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content"));
+                    String llmResp=OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content");
+                    appendToOutputDocumentOllama(llmResp);
                     //
+                    //Store chat 
+                     List<String> chat1 = Arrays.asList(userInput, llmResp);
+                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                    store.storeChat("NBCHAT-"+System.currentTimeMillis(), chat1, embedding1);
+                    appendText("[+m]\n");                   
                     return null;
                 } else {
                     callChatGPT(userInput);
@@ -529,5 +596,17 @@ public class ChatTopComponent extends TopComponent {
     }
 
 
+    /**
+     * 1. Get path to the folder,
+     * 2. Scan all the Java files
+     * 3. Create chunks of 256 characters,
+     * 4. Call embeddings,
+     * 5. Store them into MapDB vector store,
+     * 6. The vector db should be created with name of the project.
+     */
+    private void indexProject(){
+    
+    
+    }
 
 }

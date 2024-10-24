@@ -6,13 +6,14 @@ package com.stackleader.netbeans.chatgpt;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.text.JTextComponent;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.SourceGroup;
-import org.netbeans.api.project.Sources;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.filesystems.FileObject;
+import org.openide.util.Mutex;
 
 /**
  *
@@ -27,8 +28,6 @@ public class IDEHelper {
         return functionHandlers;
     }
      
-     
-     
        public static void registerFunction(FunctionHandler handler) {
         functionHandlers.put(handler.getFunctionName(), handler);
     }
@@ -36,7 +35,8 @@ public class IDEHelper {
     
     
        
-       public static void listAllFiles(StringBuilder output) {
+  public static void listAllFiles(StringBuilder output) {
+    Mutex.EVENT.readAccess(() -> {
         // Get the currently opened projects
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
 
@@ -47,11 +47,13 @@ public class IDEHelper {
             FileObject projectDirectory = activeProject.getProjectDirectory();
 
             // Recursively list all files
-            listFilesRecursively(projectDirectory,output);
+            listFilesRecursively(projectDirectory, output);
         } else {
             System.out.println("No active projects found.");
         }
-    }
+        return null;  // Return value is required for readAccess
+    });
+}
 
     private static void listFilesRecursively(FileObject folder,StringBuilder output) {
         for (FileObject file : folder.getChildren()) {
@@ -118,7 +120,37 @@ public class IDEHelper {
         return null;
     }
     
-    
+    //TEST THE METHODS
+        public static void main(String[] args) {
+        // Step 1: Register the FilesList handler
+        FilesList filesListHandler = new FilesList();
+        IDEHelper.registerFunction(filesListHandler);
+
+        // Step 2: Test the listAllFiles functionality through the FilesList handler
+        System.out.println("=== Testing listAllFiles ===");
+        FunctionHandler filesHandler = IDEHelper.getFunctionHandlers().get("projetc_files_list");
+        
+        if (filesHandler != null) {
+            // Simulate passing empty JSON arguments since no variables are used
+            JSONObject arguments = new JSONObject();
+            String result = filesHandler.execute(arguments);
+            System.out.println(result);  // Output the list of files
+        } else {
+            System.out.println("FilesList handler not found.");
+        }
+
+        // Step 3: Test the detectProjectLanguage method
+        System.out.println("=== Testing detectProjectLanguage ===");
+        IDEHelper ideHelperInstance = new IDEHelper();
+        ideHelperInstance.detectProjectLanguage();  // Detect and print the language
+        
+        System.out.println("=== This Project ===");
+        JTextComponent editorPane = EditorRegistry.lastFocusedComponent();  
+        System.out.println(editorPane.getDocument().getLength());
+       
+        Project thisProject=OpenProjects.getDefault().getOpenProjects()[0];
+        System.out.println(thisProject.getProjectDirectory().getPath());
+    }
     
 
 }

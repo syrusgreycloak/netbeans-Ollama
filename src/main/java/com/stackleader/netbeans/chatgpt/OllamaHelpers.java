@@ -47,10 +47,10 @@ public class OllamaHelpers {
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
         if(value_name!=null) OLLAMA_EP=value_name;
         
-    //    OLLAMA_MODELS_TOOLS.add("nemotron-mini");
-    //    OLLAMA_MODELS_TOOLS.add("llama3.1");
-    //    OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
-    //    OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
+        OLLAMA_MODELS_TOOLS.add("qwen2.5:1.5b");
+        OLLAMA_MODELS_TOOLS.add("llama3.2:latest");
+        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
+        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
     }
     
     /**
@@ -172,7 +172,75 @@ public class OllamaHelpers {
        return responseJ;
     }
     
+    public static JSONObject callEmbeddings(String urlString, String jsonInputString, String model) throws Exception {
+        URL url = new URL(urlString);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+        // Set request properties
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json; utf-8");
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setDoOutput(true);
+
+        // Write the JSON input string to the request body
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonInputString.getBytes("utf-8");
+            os.write(input, 0, input.length);
+        }
+
+        // Get the response
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+            String responseLine;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+        }
+
+        // Convert the response string to JSONObject
+        return new JSONObject(response.toString());
+    }
+
+    // Helper method to extract embeddings from a single input response
+    public static double[] extractEmbeddings(JSONObject response) {
+        JSONArray embeddingsArray = response.getJSONArray("embeddings").getJSONArray(0); // First input's embeddings
+        return jsonArrayToDoubleArray(embeddingsArray);
+    }
+
+    // Helper method to extract embeddings from a specific input index in a multiple input response
+    public static double[] extractEmbeddings(JSONObject response, int inputIndex) {
+        JSONArray embeddingsArray = response.getJSONArray("embeddings").getJSONArray(inputIndex); // Specific input's embeddings
+        return jsonArrayToDoubleArray(embeddingsArray);
+    }
+
+    // Helper method to convert JSONArray to double[]
+    public  static double[] jsonArrayToDoubleArray(JSONArray jsonArray) {
+        double[] result = new double[jsonArray.length()];
+        for (int i = 0; i < jsonArray.length(); i++) {
+            result[i] = jsonArray.getDouble(i);
+        }
+        return result;
+    }
     
+        public static double[] getChatEmbedding(List<String> chatMessages) {
+        try {
+            // Concatenate all chat messages into a single string
+            String chatContent = String.join(" ", chatMessages);
+            // API URL
+            
+            JSONObject request=new JSONObject();
+            request.put("model", "nomic-embed-text:latest");
+            request.put("input", chatContent);
+            JSONObject singleResponse =OllamaHelpers.callEmbeddings(OLLAMA_EP+"/api/embed", request.toString(), "nomic-embed-text:latest");
+            
+            // Extract embeddings from the response
+            return OllamaHelpers.extractEmbeddings(singleResponse);
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return null;
+    }
+        
     /**
      * 
      * @param model
@@ -280,6 +348,7 @@ public class OllamaHelpers {
                         return messageObjectT;
                     } else {
                         System.out.println("No handler registered for function: " + functionName);
+                        JOptionPane.showConfirmDialog(null, "No handler registered for function: " + functionName);
                     }
                 }
             }else {
@@ -313,6 +382,7 @@ public class OllamaHelpers {
 
     } catch (Exception e) {
         e.printStackTrace();
+        JOptionPane.showConfirmDialog(null, e.getMessage());
     }
         return null;
 }
@@ -372,6 +442,43 @@ public class OllamaHelpers {
 
         // Return the merged array
         return mergedArray;
+    }
+    
+    
+    public static void main(String[] args) {
+        try {
+            // API URL
+            String url = "http://localhost:11434/api/embed";
+
+            // Example for Single Input
+            String singleInput = "{ \"model\": \"nomic-embed-text:latest\", \"input\": \"Why is the sky blue?\" }";
+            JSONObject singleResponse = callEmbeddings(url, singleInput, "nomic-embed-text:latest");
+            System.out.println("Single Input Response:");
+            System.out.println(singleResponse.toString(4));
+
+            // Extract embeddings for single input
+            double[] singleEmbeddings = extractEmbeddings(singleResponse);
+            System.out.println("\nSingle Input Embeddings:");
+            for (double value : singleEmbeddings) {
+                System.out.print(value + " ");
+            }
+
+            // Example for Multiple Inputs
+            String multipleInput = "{ \"model\": \"nomic-embed-text:latest\", \"input\": [\"Why is the sky blue?\", \"Why is the grass green?\"] }";
+            JSONObject multipleResponse = callEmbeddings(url, multipleInput, "nomic-embed-text:latest");
+            System.out.println("\n\nMultiple Input Response:");
+            System.out.println(multipleResponse.toString(4));
+
+            // Extract embeddings for multiple inputs (just the first input)
+            double[] multipleEmbeddings = extractEmbeddings(multipleResponse, 0);
+            System.out.println("\nFirst Embeddings from Multiple Input:");
+            for (double value : multipleEmbeddings) {
+                System.out.print(value + " ");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     
 }
