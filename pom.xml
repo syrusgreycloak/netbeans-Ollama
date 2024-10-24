@@ -38,6 +38,14 @@
                     </archive>
                 </configuration>
             </plugin>
+            <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>nbm-maven-plugin</artifactId>
+            <version>4.0</version>
+            <configuration>
+                <useOSGiDependencies>false</useOSGiDependencies>
+            </configuration>
+        </plugin>
         </plugins>
     </build>
     <repositories>
@@ -141,6 +149,26 @@
         <artifactId>org-netbeans-modules-editor-lib2</artifactId>
         <version>RELEASE140</version>
     </dependency>
- 
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-projectapi</artifactId>
+            <version>RELEASE90</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-projectuiapi-base</artifactId>
+            <version>RELEASE90</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+    <groupId>org.netbeans.api</groupId>
+    <artifactId>org-openide-filesystems</artifactId>
+    <version>RELEASE140</version>
+</dependency>
+        <dependency>
+            <groupId>org.mapdb</groupId>
+            <artifactId>mapdb</artifactId>
+            <version>3.0.8</version>
+        </dependency>
     </dependencies>
 </project>
