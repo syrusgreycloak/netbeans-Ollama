@@ -47,10 +47,10 @@ public class OllamaHelpers {
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
         if(value_name!=null) OLLAMA_EP=value_name;
         
-        OLLAMA_MODELS_TOOLS.add("qwen2.5:1.5b");
-        OLLAMA_MODELS_TOOLS.add("llama3.2:latest");
-        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
-        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
+//        OLLAMA_MODELS_TOOLS.add("qwen2.5:1.5b");
+//        OLLAMA_MODELS_TOOLS.add("llama3.2:latest");
+//        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
+//        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
     }
     
     /**

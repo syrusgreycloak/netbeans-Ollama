@@ -126,7 +126,7 @@ public class ChatTopComponent extends TopComponent {
         //Get Project Info
         // Get the currently opened projects
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
-        appendText("Open Projects that I can access:");
+        appendText("Open Projects that I can access:\n");
         for(Project project:openProjects){
            // JOptionPane.showConfirmDialog(outputTextArea,"Open Projects: "+ OpenProjects.getDefault().getOpenProjects()[0].getProjectDirectory().getPath());//Testing here
         appendText(project.getProjectDirectory().getName()+":"+project.getProjectDirectory().getPath()+"\n");
@@ -134,8 +134,6 @@ public class ChatTopComponent extends TopComponent {
 
     }
     
-   
-
     private String promptForToken() {
         NotifyDescriptor.InputLine inputLine = new NotifyDescriptor.InputLine(
                 "Enter OpenAI API Token:",
