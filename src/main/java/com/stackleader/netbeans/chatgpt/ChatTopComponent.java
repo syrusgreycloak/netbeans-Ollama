@@ -2,6 +2,7 @@ package com.stackleader.netbeans.chatgpt;
 
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
+import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -26,6 +27,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +45,7 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.Gutter;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import org.json.JSONObject;
 import org.netbeans.api.editor.EditorRegistry;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
@@ -55,6 +62,7 @@ import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
+import org.openide.util.Exceptions;
 
 /**
  *
@@ -75,7 +83,7 @@ public class ChatTopComponent extends TopComponent {
     System.Logger LOG = System.getLogger("ChatTopComponent");
 
     public static final String PREFERRED_ID = "ChatTopComponent";
-    private static final int BOTTOM_PANEL_HEIGHT = 100;
+    private static final int BOTTOM_PANEL_HEIGHT = 140;
     private static final int BUTTON_WIDTH = 100;
     private static final int BUTTON_HEIGHT = 25;
     private static final int ACTIONS_PANEL_WIDTH = 20;
@@ -262,7 +270,9 @@ public class ChatTopComponent extends TopComponent {
         buttonPanel.add(submitButton, gbc);
         gbc.gridy++;
         buttonPanel.add(createChatHistoryButton(),gbc);//To load history
-        
+        //Index codebase
+        gbc.gridy++;
+        buttonPanel.add(createIndexButton(),gbc);//To load history
         return buttonPanel;
     }
 
@@ -294,7 +304,42 @@ public class ChatTopComponent extends TopComponent {
         submitButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                submit();
+                Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
+
+                if (selectedProject != null) {
+                    System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
+                } else {
+                    System.out.println("No project selected.");
+                }
+                // Scan the folder and get the map of file dependencies
+                Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
+                
+                appendText("====Generating Data for Code search======\n");
+                result.keySet().forEach(key->{
+                    appendText(key+"\n");
+                    
+                    Path path = Paths.get(key);
+                    
+                        String fileContent;
+                    try {
+                        fileContent = Files.readString(path);
+                        String userInput = inputTextArea.getText();
+                        String selectedModel = (String) modelSelection.getSelectedItem(); // Get the selected model
+                        appendText(selectedModel+" is being used ... \n");
+                        String prompt = (userInput.isBlank() ? " Describe the file content given below\n" : userInput) + fileContent;
+                        JSONObject codeSummary=OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);//"response":"..data.."
+                        
+                        if(codeSummary!=null)
+                        appendText(codeSummary.getString("response")+"\n");
+                    } catch (Exception ex) {
+                        Exceptions.printStackTrace(ex);
+                    }
+                        
+                   
+                    
+            });
+                appendText("====Completed the indexing ======\n");
+                appendText("Now your questions will be answered by looing at the project code. Also, regularly re-index for updated results.\n");
             }
         });
         return submitButton;

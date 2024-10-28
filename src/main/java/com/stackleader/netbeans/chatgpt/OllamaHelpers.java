@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openide.util.Exceptions;
@@ -445,7 +447,109 @@ public class OllamaHelpers {
     }
     
     
+      public static void makePostRequest(  String jsonPayload, RSyntaxTextArea outputTextArea) throws Exception {
+         URL url = new URL(OLLAMA_EP+"/api/generate");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+
+        // Send JSON payload
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonPayload.getBytes("utf-8");
+            os.write(input, 0, input.length);
+        }
+
+        // Read and parse the JSON response stream
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+            String line;
+            StringBuilder response = new StringBuilder();
+            
+            // Read each line (JSON object) from the stream
+            while ((line = br.readLine()) != null) {
+                // Parse each line as a JSON object
+                JSONObject jsonObject = new JSONObject(line);
+
+                // Extract values from the JSON object
+                String model = jsonObject.getString("model");
+                String responseText = jsonObject.getString("response");
+                boolean done = jsonObject.getBoolean("done");
+
+                // Display the parsed data
+                System.out.println("Model: " + model);
+                System.out.println("Response Text: " + responseText);
+                System.out.println("Done: " + done);
+                System.out.println("----------");
+                
+                if(outputTextArea!=null){
+                     // Append response to the RSyntaxTextArea
+                SwingUtilities.invokeLater(() -> {
+                    outputTextArea.append(responseText + " ");
+                });
+                }
+
+                // Break if response is marked as done
+                if (done) break;
+            }
+        }
+    }
+      
+       /**
+     * Makes a request with stream=false and processes a single JSON object response.
+     * @param requestUrl The endpoint URL.
+     * @param model The model to use.
+     * @param prompt The prompt to send.
+     */
+    public static JSONObject makeNonStreamedRequest(  String model, String prompt) throws Exception {
+        URL url = new URL(OLLAMA_EP+"/api/generate");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+
+        // Prepare JSON payload
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("model", model);
+        jsonObject.put("prompt", prompt);
+        jsonObject.put("stream", false);
+
+        // Send JSON payload
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonObject.toString().getBytes("utf-8");
+            os.write(input, 0, input.length);
+        }
+
+        // Read and parse the single JSON response
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+            StringBuilder responseBuilder = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                responseBuilder.append(line);
+            }
+
+            // Parse JSON object from the response
+            JSONObject jsonObjectr = new JSONObject(responseBuilder.toString());
+
+            return jsonObjectr;
+        }
+    }
+    
     public static void main(String[] args) {
+        
+        try {
+            // Define the endpoint URL and JSON payload
+            String url = "http://localhost:11434/api/generate";
+            String payload = "{\"model\": \"llama3.2\", \"prompt\": \"Why is the sky blue?\"}";
+
+            // Make HTTP POST request and parse the response
+            makePostRequest( payload,null);
+            
+            makeNonStreamedRequest(  "llama3.2", "Why is the sky blue?");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        
         try {
             // API URL
             String url = "http://localhost:11434/api/embed";

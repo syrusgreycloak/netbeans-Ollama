@@ -6,6 +6,10 @@ package com.stackleader.netbeans.chatgpt;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JComboBox;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.text.JTextComponent;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -152,6 +156,50 @@ public class IDEHelper {
         System.out.println(thisProject.getProjectDirectory().getPath());
     }
     
+    /**
+     * Displays a dialog with a JComboBox of open projects, allowing the user to select one.
+     * 
+     * @return The selected Project, or null if no project was selected.
+     */
+    public static Project selectProjectFromOpenProjects() {
+        // Retrieve the open projects
+        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+
+        // Check if there are any open projects
+        if (openProjects.length == 0) {
+            JOptionPane.showMessageDialog(null, "No open projects found.");
+            return null;
+        }
+
+        // Create a JComboBox with the project names as options
+        JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
+
+        // Set a custom renderer to display project names instead of object references
+        projectComboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                
+                // Assuming each Project object has a method getDisplayName() to show project name
+                if (value instanceof Project) {
+                    Project project = (Project) value;
+                    setText(project.getProjectDirectory().getName()); // Adjust as per Project API
+                }
+                return this;
+            }
+        });
+
+        // Show the JComboBox in a JOptionPane dialog
+        int result = JOptionPane.showConfirmDialog(
+                null, projectComboBox, "Select a Project", JOptionPane.OK_CANCEL_OPTION);
+
+        if (result == JOptionPane.OK_OPTION) {
+            return (Project) projectComboBox.getSelectedItem();
+        } else {
+            return null;
+        }
+    }
 
 }
 
