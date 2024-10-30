@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.redbus</groupId>
     <artifactId>netbeans-ollama</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
     <packaging>nbm</packaging>
     
     <properties>
@@ -170,5 +170,18 @@
             <artifactId>mapdb</artifactId>
             <version>3.0.8</version>
         </dependency>
+        
+        <dependency>
+    <groupId>org.netbeans.api</groupId>
+    <artifactId>org-openide-awt</artifactId>
+    <version>RELEASE140</version> <!-- or the version relevant to your NetBeans platform -->
+</dependency>
+    <dependency>
+        <groupId>org.netbeans.api</groupId>
+        <artifactId>org-netbeans-api-progress</artifactId>
+        <version>RELEASE140</version> <!-- Adjust version based on your NetBeans version -->
+    </dependency>
+
     </dependencies>
+    <name>Netbeans-Ollama</name>
 </project>
