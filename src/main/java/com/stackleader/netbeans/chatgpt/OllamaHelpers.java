@@ -18,9 +18,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -532,9 +534,49 @@ public class OllamaHelpers {
 
             return jsonObjectr;
         }
+        
+        
     }
     
+        public static List<String> chunkSentences(String text, int sentencesPerChunk) {
+        List<String> chunks = new ArrayList<>();
+        BreakIterator iterator = BreakIterator.getSentenceInstance(Locale.US);
+        iterator.setText(text);
+
+        int start = iterator.first();
+        int sentenceCount = 0;
+        StringBuilder chunkBuilder = new StringBuilder();
+
+        for (int end = iterator.next(); end != BreakIterator.DONE; start = end, end = iterator.next()) {
+            sentenceCount++;
+            chunkBuilder.append(text, start, end).append(" ");
+
+            if (sentenceCount == sentencesPerChunk) {
+                chunks.add(chunkBuilder.toString().trim());
+                chunkBuilder.setLength(0);
+                sentenceCount = 0;
+            }
+        }
+
+        // Add any remaining sentences in the last chunk
+        if (!chunkBuilder.isEmpty() && !chunkBuilder.toString().trim().isEmpty()) {
+            chunks.add(chunkBuilder.toString().trim());
+        }
+
+        return chunks;
+    }
+        
     public static void main(String[] args) {
+        
+          String text = "This is the first sentence. Here is another one! Is this the third sentence? Yes, it is. And this is the fifth one. Finally, this is the sixth sentence.";
+
+        int sentencesPerChunk = 4;
+        List<String> chunks = chunkSentences(text, sentencesPerChunk);
+        for (String chunk : chunks) {
+            System.out.println(chunk);
+            System.out.println("---");
+        }
+        
         
         try {
             // Define the endpoint URL and JSON payload
