@@ -86,7 +86,7 @@ public class ChatTopComponent extends TopComponent {
     System.Logger LOG = System.getLogger("ChatTopComponent");
 
     public static final String PREFERRED_ID = "ChatTopComponent";
-    private static final int BOTTOM_PANEL_HEIGHT = 140;
+    private static final int BOTTOM_PANEL_HEIGHT = 60;
     private static final int BUTTON_WIDTH = 100;
     private static final int BUTTON_HEIGHT = 25;
     private static final int ACTIONS_PANEL_WIDTH = 20;
@@ -192,6 +192,29 @@ public class ChatTopComponent extends TopComponent {
             }
         });
         actionsPanel.add(optionsButton);
+        
+        //Index action
+        JButton indexButton = new JButton(ImageUtilities.loadImageIcon("icons/index.png", true));
+        indexButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+               indexProject();
+            }
+        });
+        actionsPanel.add(indexButton);
+        
+        
+         //Search action
+        JButton searchButton = new JButton(ImageUtilities.loadImageIcon("icons/glass.png", true));
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+               searchIndex();
+            }
+        });
+        actionsPanel.add(searchButton);
+        
+        
         return actionsPanel;
     }
 
@@ -270,16 +293,16 @@ public class ChatTopComponent extends TopComponent {
 //        gbc.gridy++;
 //        JButton submitButton = createSubmitButton();
 //        buttonPanel.add(submitButton, gbc);
-        gbc.gridy++;
-        buttonPanel.add(createChatHistoryButton(),gbc);//To load history
-        //Index codebase
-        gbc.gridy++;
-        buttonPanel.add(createIndexButton(),gbc);//To load history
+//        gbc.gridy++;
+//        buttonPanel.add(createChatHistoryButton(),gbc);//To load history
+//        //Index codebase
+//        gbc.gridy++;
+//        buttonPanel.add(createIndexButton(),gbc);//To load history
         return buttonPanel;
     }
 
     private JButton createResetButton() {
-        final JButton resetButton = createButton("Reset");
+        final JButton resetButton = createButton("Session Reset");
         resetButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -308,68 +331,7 @@ private JButton createIndexButton() {
     submitButton.addActionListener(new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
-            if (selectedProject == null) {
-                System.out.println("No project selected.");
-                return;
-            }
-
-            System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
-
-            // Start a background task using RequestProcessor
-            RequestProcessor.getDefault().post(new Runnable() {
-                @Override
-                public void run() {
-                    // Initialize ProgressHandle
-                    ProgressHandle progressHandle = ProgressHandle.createHandle("Indexing Project: " + selectedProject.getProjectDirectory().getName());
-                    progressHandle.start();  // Start the progress bar
-
-                    try {
-                        // Get the file dependencies
-                        Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
-                        appendText("==== Generating Data for Code Search ====\n");
-
-                        int totalFiles = result.size();
-                        int currentFile = 0;
-
-                        for (String key : result.keySet()) {
-                            appendText(key + "\n");
-                            progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
-                            currentFile++;
-
-                            Path path = Paths.get(key);
-                            try {
-                                String fileContent = Files.readString(path);
-                                String userInput = inputTextArea.getText();
-                                String selectedModel = (String) modelSelection.getSelectedItem();
-                                appendText(selectedModel + " is being used ... \n");
-
-                                String prompt = (userInput.isBlank() ? "Describe the file content given below in just one sentence.\n" : userInput) + fileContent;
-                                JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
-
-                                if (codeSummary != null) {
-                                    String llmresp=codeSummary.getString("response") ;
-                                    appendText(llmresp + "\n");
-                                    
-                                    List<String> chat1 = Arrays.asList( llmresp);
-                                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                                    chat1 = Arrays.asList( llmresp,path.toFile().getAbsolutePath());
-                                    //The key for storage is Project-name and the sys-millisec
-                                    store.storeChat(selectedProject.getProjectDirectory().getName()+"-"+System.currentTimeMillis(), chat1, embedding1);
-                                }
-                            } catch (Exception ex) {
-                                Exceptions.printStackTrace(ex);
-                            }
-                        }
-
-                        appendText("==== Completed the Indexing ====\n");
-                        appendText("Now your questions will be answered by looking at the project code. Also, regularly re-index for updated results.\n");
-                    } finally {
-                        // Complete the progress handle to stop the progress bar
-                        progressHandle.finish();
-                    }
-                }
-            });
+            indexProject();
         }
     });
 
@@ -381,22 +343,7 @@ private JButton createIndexButton() {
         submitButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String userInput = inputTextArea.getText();
-                
-                if(!userInput.isBlank()){
-                 List<String> chat1 = Arrays.asList(userInput);
-                double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                List<ChatSimilarityResult> chats=store.findSimilarChats(embedding1, 0.4, 3);
-                chats.forEach(chatresult->{
-                    List<String> kvChats=store.getChat(chatresult.getChatId());
-                    kvChats.forEach(chat->{
-                        appendToOutputDocumentOllama(chat+"\n" );
-                    });
-                    
-                });
-                } else {
-                    JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
-                }
+              searchIndex();
             }
         });
         return submitButton;
@@ -679,8 +626,89 @@ private JButton createIndexButton() {
      * 6. The vector db should be created with name of the project.
      */
     private void indexProject(){
+        
+            Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
+            if (selectedProject == null) {
+                System.out.println("No project selected.");
+                return;
+            }
+
+            System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
+
+            // Start a background task using RequestProcessor
+            RequestProcessor.getDefault().post(new Runnable() {
+                @Override
+                public void run() {
+                    // Initialize ProgressHandle
+                    ProgressHandle progressHandle = ProgressHandle.createHandle("Indexing Project: " + selectedProject.getProjectDirectory().getName());
+                    progressHandle.start();  // Start the progress bar
+
+                    try {
+                        // Get the file dependencies
+                        Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
+                        appendText("==== Generating Data for Code Search ====\n");
+
+                        int totalFiles = result.size();
+                        int currentFile = 0;
+
+                        for (String key : result.keySet()) {
+                            appendText(key + "\n");
+                            progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
+                            currentFile++;
+
+                            Path path = Paths.get(key);
+                            try {
+                                String fileContent = Files.readString(path);
+                                String userInput = inputTextArea.getText();
+                                String selectedModel = (String) modelSelection.getSelectedItem();
+                                appendText(selectedModel + " is being used ... \n");
+
+                                String prompt = (userInput.isBlank() ? "Describe the file content given below in just one sentence.\n" : userInput) + fileContent;
+                                JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+
+                                if (codeSummary != null) {
+                                    String llmresp=codeSummary.getString("response") ;
+                                    appendText(llmresp + "\n");
+                                    
+                                    List<String> chat1 = Arrays.asList( llmresp);
+                                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                                    chat1 = Arrays.asList( llmresp,path.toFile().getAbsolutePath());
+                                    //The key for storage is Project-name and the sys-millisec
+                                    store.storeChat(selectedProject.getProjectDirectory().getName()+"-"+System.currentTimeMillis(), chat1, embedding1);
+                                }
+                            } catch (Exception ex) {
+                                Exceptions.printStackTrace(ex);
+                            }
+                        }
+
+                        appendText("==== Completed the Indexing ====\n");
+                        appendText("Now your questions will be answered by looking at the project code. Also, regularly re-index for updated results.\n");
+                    } finally {
+                        // Complete the progress handle to stop the progress bar
+                        progressHandle.finish();
+                    }
+                }
+            });
     
+    }
     
+    private void searchIndex(){
+          String userInput = inputTextArea.getText();
+                
+                if(!userInput.isBlank()){
+                 List<String> chat1 = Arrays.asList(userInput);
+                double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                List<ChatSimilarityResult> chats=store.findSimilarChats(embedding1, 0.4, 3);
+                chats.forEach(chatresult->{
+                    List<String> kvChats=store.getChat(chatresult.getChatId());
+                    kvChats.forEach(chat->{
+                        appendToOutputDocumentOllama(chat+"\n" );
+                    });
+                    
+                });
+                } else {
+                    JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
+                }
     }
 
 }
