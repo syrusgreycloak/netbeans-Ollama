@@ -3,12 +3,13 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.redbus</groupId>
     <artifactId>netbeans-ollama</artifactId>
-    <version>0.0.5</version>
+    <version>0.0.6</version>
     <packaging>nbm</packaging>
     
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <netbeans.version>RELEASE140</netbeans.version>
+        <useOSGiDependencies>false</useOSGiDependencies>
     </properties>
     
     <build>
@@ -181,7 +182,30 @@
         <artifactId>org-netbeans-api-progress</artifactId>
         <version>RELEASE140</version> <!-- Adjust version based on your NetBeans version -->
     </dependency>
+    <dependency>
+    <groupId>org.netbeans.api</groupId>
+    <artifactId>org-openide-util-lookup</artifactId>
+    <version>RELEASE140</version>
+</dependency>
+
+<dependency>
+    <groupId>org.netbeans.api</groupId>
+    <artifactId>org-openide-loaders</artifactId>
+    <version>RELEASE140</version>
+</dependency>
+
 
     </dependencies>
     <name>Netbeans-Ollama</name>
+    <description>\
+    &lt;p&gt;&lt;b&gt;This plugin allows users to leverage the power of Ollama, a conversational AI model, within NetBeans IDE for enhanced development assistance and support.&lt;/b&gt;&lt;/p&gt;\
+    &lt;p&gt;Ollama is an advanced collection of conversational open weight AI models. With this plugin, developers can access the capabilities of many models like Lllama3.1, Mistral. phi3.5 etc directly from within NetBeans IDE, enabling more interactive and intuitive development workflows.&lt;/p&gt;\
+    &lt;p&gt;Key features of the Ollama Plugin include:&lt;/p&gt;\
+    &lt;ul&gt;\
+    &lt;li&gt;&lt;strong&gt;Code Generation:&lt;/strong&gt; Generate code snippets, templates, and boilerplate code with the help of Ollama&lt;/li&gt;\
+    &lt;li&gt;&lt;strong&gt;Enhanced Productivity:&lt;/strong&gt; Speed up your development process by leveraging the power of Ollam&lt;/li&gt;\
+    &lt;/ul&gt;\
+    &lt;p&gt;&lt;br&gt;\
+    For more information and updates, visit the &lt;a href="https://github.com/manojkumarredbus/netbeans-Ollama"&gt;GitHub repository&lt;/a&gt;.&lt;br&gt;&lt;br&gt;\
+    Enjoy the enhanced development experience with  Plugin!&lt;/p&gt;</description>
 </project>
