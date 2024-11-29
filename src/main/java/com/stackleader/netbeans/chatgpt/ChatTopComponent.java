@@ -3,6 +3,9 @@ package com.stackleader.netbeans.chatgpt;
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
 import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
+import static com.stackleader.netbeans.chatgpt.OllamaHelpers.callLLMVision;
+import static com.stackleader.netbeans.chatgpt.OllamaHelpers.convertImageToBase64;
+import static com.stackleader.netbeans.chatgpt.OllamaHelpers.createJsonPayload;
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -38,7 +41,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.JTextComponent;
+import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.html.HTMLEditorKit;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -86,13 +93,14 @@ public class ChatTopComponent extends TopComponent {
     System.Logger LOG = System.getLogger("ChatTopComponent");
 
     public static final String PREFERRED_ID = "ChatTopComponent";
-    private static final int BOTTOM_PANEL_HEIGHT = 60;
+    private static final int BOTTOM_PANEL_HEIGHT = 70;
     private static final int BUTTON_WIDTH = 100;
     private static final int BUTTON_HEIGHT = 25;
     private static final int ACTIONS_PANEL_WIDTH = 20;
     public static final String QUICK_COPY_TEXT = "(Quick Copy: Ctrl+Click here)";
 
     private RSyntaxTextArea outputTextArea;
+    JEditorPane editorPane;
     private final static List<ChatMessage> messages = new CopyOnWriteArrayList<>();
     private final static Parser parser = Parser.builder().build();
     private final static HtmlRenderer htmlRenderer = HtmlRenderer.builder().build();
@@ -118,6 +126,31 @@ public class ChatTopComponent extends TopComponent {
                 return;
             }
         }
+        
+        //Set Plugin Home Directory
+        String pluginHomeDir = prefs.get(Configuration.PLUGIN_HOME_DIR, null);
+         if (pluginHomeDir == null || pluginHomeDir.isEmpty()) {
+            // Set a default home directory if none exists
+            pluginHomeDir = System.getProperty("user.home") + File.separator + "MyPluginData";
+            prefs.put(Configuration.PLUGIN_HOME_DIR, pluginHomeDir);
+        }
+
+        File pluginDir = new File(pluginHomeDir);
+
+        if (!pluginDir.exists()) {
+            if (pluginDir.mkdirs()) {
+                System.out.println("Plugin home directory created at: " + pluginHomeDir);
+            } else {
+                System.err.println("Failed to create plugin home directory at: " + pluginHomeDir);
+                return; // Exit if the directory cannot be created
+            }
+        } else {
+            System.out.println("Using existing plugin home directory at: " + pluginHomeDir);
+        }
+
+        // Continue with plugin initialization
+        System.out.println("Plugin initialized with home directory: " + pluginHomeDir);
+        
         addComponentsToFrame();
         service = new OpenAiService(token);
         
@@ -125,10 +158,14 @@ public class ChatTopComponent extends TopComponent {
         IDEHelper.registerFunction(new FilesList());
         
         //Initiate Vector Store
-        store = new MapDBVectorStore("MKVECOLLAMA.db");
+        store = new MapDBVectorStore(pluginHomeDir+"/MKVECOLLAMA.db");
         
-        String currentDirectory = System.getProperty("user.dir");
-        appendText("Plugin working directory: "+currentDirectory+"\n");
+       // String currentDirectory = System.getProperty("user.dir");
+        appendText("Plugin working directory: "+pluginHomeDir+"\n");
+        appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  "+pluginHomeDir+"\n");
+        //nomic-embed-text
+        //llama3.2-vision
+        //llama3.2:1b
         appendText("Vector store : MKVECOLLAMA.db \n");
         
         
@@ -165,7 +202,9 @@ public class ChatTopComponent extends TopComponent {
     private void addComponentsToFrame() {
         add(createActionsPanel(), BorderLayout.WEST);
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.add(createOutputScrollPane(), BorderLayout.CENTER);
+        mainPanel.add(createOutputScrollPane(), BorderLayout.CENTER); // createOutputJEditorPane()  createOutputScrollPane()
+        //createOutputScrollPane();//Place holder code, remove afterwards.
+        //mainPanel.add(createOutputJEditorPane(), BorderLayout.EAST); // createOutputJEditorPane()  createOutputScrollPane()
         mainPanel.add(createBottomPanel(), BorderLayout.SOUTH);
         add(mainPanel, BorderLayout.CENTER);
     }
@@ -265,6 +304,79 @@ public class ChatTopComponent extends TopComponent {
         outputTextArea.setLinkGenerator(new CodeBlockLinkGenerator());
         return outputTextArea;
     }
+    
+    private JEditorPane createOutputJEditorPane() {
+    // Create a JEditorPane
+    JEditorPane outputTextArea = new JEditorPane();
+    outputTextArea.setContentType("text/html"); // Enable HTML support
+
+    // Get UI defaults
+    UIDefaults defaults = UIManager.getLookAndFeelDefaults();
+    Color bg = defaults.getColor("EditorPane.background");
+    Color fg = defaults.getColor("EditorPane.foreground");
+    Color menuBackground = defaults.getColor("Menu.background");
+    Color selectedTextColor = new Color(100, 149, 237);
+
+    // Set colors and styles
+    outputTextArea.setForeground(fg);
+    outputTextArea.setBackground(menuBackground);
+    outputTextArea.setEditable(false); // Make it read-only
+
+    // Style with CSS
+    String style = String.format(" <style>\n" +
+"                body {\n" +
+"                    background-color: rgb(%d, %d, %d);\n" +
+"                    color: rgb(%d, %d, %d);\n" +
+"                    font-family: Arial, sans-serif;\n" +
+"                    line-height: 1.5;\n" +
+"                }\n" +
+"                a {\n" +
+"                    color: rgb(%d, %d, %d);\n" +
+"                    text-decoration: none;\n" +
+"                }\n" +
+"                a:hover {\n" +
+"                    text-decoration: underline;\n" +
+"                }\n" +
+"            </style>",
+            menuBackground.getRed(), menuBackground.getGreen(), menuBackground.getBlue(),
+            fg.getRed(), fg.getGreen(), fg.getBlue(),
+            selectedTextColor.getRed(), selectedTextColor.getGreen(), selectedTextColor.getBlue()
+    );
+
+    // Set initial content with custom CSS
+    outputTextArea.setText("<html>" + style + "<body></body></html>");
+
+    // Add a HyperlinkListener for link handling
+    outputTextArea.addHyperlinkListener(event -> {
+        if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+            System.out.println("Link clicked: " + event.getDescription());
+            // Handle link clicks (e.g., navigate or open files)
+            handleLinkClick(event.getDescription());
+        }
+    });
+
+    return outputTextArea;
+}
+
+/**
+ * Handles link clicks from the JEditorPane.
+ *
+ * @param link The link that was clicked
+ */
+private void handleLinkClick(String link) {
+    if (link.startsWith("file://")) {
+        String filePath = link.substring(7); // Remove "file://"
+        System.out.println("Opening file: " + filePath);
+        // Implement logic to open the file in NetBeans or another editor
+    } else {
+        try { //Open in editor?
+            //Desktop.getDesktop().browse(new URI(link));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
 
     private JPanel createBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
@@ -290,6 +402,10 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridy++;
         JButton resetButton = createResetButton();
         buttonPanel.add(resetButton, gbc);
+        gbc.gridy++;
+        JButton imageButton =createImageAddButton();
+        buttonPanel.add(imageButton, gbc);
+
 //        gbc.gridy++;
 //        JButton submitButton = createSubmitButton();
 //        buttonPanel.add(submitButton, gbc);
@@ -307,6 +423,55 @@ public class ChatTopComponent extends TopComponent {
             @Override
             public void actionPerformed(ActionEvent e) {
                 reset();
+            }
+        });
+        return resetButton;
+    }
+    
+    private JButton createImageAddButton() {
+        final JButton resetButton = createButton("Image-OCR");
+        resetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                try {
+                    
+                     JFileChooser fileChooser = new JFileChooser();
+
+            // Set the file filter to allow only image files
+            FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                "Image Files (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"
+            );
+            fileChooser.setFileFilter(filter);
+
+            // Open the file chooser dialog
+            int result = fileChooser.showOpenDialog(null);
+
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
+                 String model = "llama3.2-vision";
+                    String userMessage = inputTextArea.getText().isBlank()?"what is in this image?": inputTextArea.getText();
+                    // Convert image to Base64
+                    String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
+
+                    // Create JSON payload
+                    String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
+
+                    // Make the POST request and handle the response
+                    String response = callLLMVision(jsonPayload);
+                    JSONObject jresp=new JSONObject(response);
+                    System.out.println("Response: " + response);
+                    appendText("\n"+jresp.getJSONObject("message").getString("content")+"\n");
+            } else {
+                System.out.println("No file selected.");
+            }
+            
+                   
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
             }
         });
         return resetButton;
@@ -504,14 +669,97 @@ private JButton createIndexButton() {
                 appendText(part);
             }
         }
+        
+        //
+         appendToOutputDocumentOllama(editorPane,  content);
     }
+
+    /**
+ * Appends content to the JEditorPane. Supports text and code blocks.
+ *
+ * @param editorPane The JEditorPane to append content to.
+ * @param content    The content to append, supporting Markdown-style code blocks.
+ */
+private void appendToOutputDocumentOllama(JEditorPane editorPane, String content) {
+    try {
+        // Get the document and editor kit
+        HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
+        HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
+
+        // Split content into parts by code block markers
+        String[] parts = content.split("```");
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+
+            if (i % 2 == 0) {
+                // Even index: Regular text (outside code blocks)
+                editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(part) + "</p>", 0, 0, null);
+            } else {
+                // Odd index: Code block (```language\n<code>```)
+                String[] lines = part.split("\\r?\\n", 2);
+                String language = lines[0]; // First line indicates the language
+                String code = (lines.length > 1) ? lines[1] : "";
+
+                // Add code block with styling
+                String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
+                                    "<code>" + escapeHtml(code.trim()) + "</code></pre>";
+                editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+            }
+        }
+
+        // Scroll to the latest addition
+        editorPane.setCaretPosition(doc.getLength());
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+}
+
+/**
+ * Escapes special HTML characters in a string.
+ *
+ * @param text The text to escape.
+ * @return The escaped HTML text.
+ */
+private String escapeHtml(String text) {
+    return text.replace("&", "&amp;")
+               .replace("<", "&lt;")
+               .replace(">", "&gt;")
+               .replace("\"", "&quot;")
+               .replace("'", "&#39;");
+}
 
     // Method to append text to the outputTextArea
     private void appendText(String text) {
         SwingUtilities.invokeLater(() -> {
             outputTextArea.append(text);
         });
+        
+        appendText(editorPane,  text);
     }
+    
+    /**
+     * Appends the given text (HTML supported) to the JEditorPane.
+     *
+     * @param editorPane The JEditorPane to append the text to.
+     * @param text The text to append (HTML supported).
+     */
+    private void appendText(JEditorPane editorPane, String text) {
+        try {
+            // Get the document model of the editor
+            HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
+            HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
+
+            // Insert the new text at the end of the document
+            editorKit.insertHTML(doc, doc.getLength(), text, 0, 0, null);
+
+            // Scroll to the end to make the appended text visible
+            editorPane.setCaretPosition(doc.getLength());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
 
     // Method to show the identified code in RSyntaxTextArea with "Copy to Clipboard" option
     private void showCodeInPopup(String code, String language) {
@@ -605,8 +853,60 @@ private JButton createIndexButton() {
                 outputTextArea.append(content);
             });
         }
+        
+        //
+         appendToOutputDocument(editorPane, content) ;
 
     }
+
+    /**
+ * Appends content to the JEditorPane, handling code blocks and annotations dynamically.
+ *
+ * @param editorPane The JEditorPane to append content to.
+ * @param content    The content to append, supporting Markdown-style code blocks.
+ */
+private void appendToOutputDocument(JEditorPane editorPane, String content) {
+    SwingUtilities.invokeLater(() -> {
+        try {
+            // Get the document and editor kit
+            HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
+            HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
+
+            if (content.startsWith("```")) {
+                // Handle code block
+                int newlinePos = content.indexOf("\n");
+
+                if (newlinePos != -1) {
+                    // Split content into annotation and code block
+                    String beforeNewline = content.substring(0, newlinePos).trim();
+                    String afterNewline = content.substring(newlinePos).trim();
+
+                    String annotatedContent = escapeHtml(beforeNewline) + " <span style='color:blue; font-style:italic;'>[Quick Copy]</span>";
+                    String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
+                                        "<code>" + escapeHtml(afterNewline) + "</code></pre>";
+
+                    // Append annotation and code block
+                    editorKit.insertHTML(doc, doc.getLength(), annotatedContent, 0, 0, null);
+                    editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                } else {
+                    // Append the content as-is if no newline found
+                    String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
+                                        "<code>" + escapeHtml(content) + "</code></pre>";
+                    editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                }
+            } else {
+                // Append regular text
+                editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(content) + "</p>", 0, 0, null);
+            }
+
+            // Scroll to the latest addition
+            editorPane.setCaretPosition(doc.getLength());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    });
+}
+
 
     private void reset() {
         messages.clear();

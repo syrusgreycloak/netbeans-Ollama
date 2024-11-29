@@ -6,6 +6,7 @@ import org.openide.util.NbPreferences;
 public class Configuration {
 
     public static final String OPENAI_TOKEN_KEY = "OPENAI_TOKEN";
+    public static final String PLUGIN_HOME_DIR = "";//Plugin Home Directory
 
     private final Preferences preferences = NbPreferences.forModule(ChatTopComponent.class);
 

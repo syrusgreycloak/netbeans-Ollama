@@ -7,6 +7,8 @@ package com.stackleader.netbeans.chatgpt;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -20,6 +22,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.text.BreakIterator;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -568,6 +571,27 @@ public class OllamaHelpers {
         
     public static void main(String[] args) {
         
+        
+        //Test Vision Model
+         String apiUrl = "http://localhost:11434/api/chat";
+        String model = "llama3.2-vision";
+        String userMessage = "what is in this image?";
+        String imagePath = "C:\\Users\\manoj.kumar\\Pictures\\Screenshots\\Screenshot 2024-11-11 122916.png"; // Replace with your image path
+
+        try {
+            // Convert image to Base64
+            String base64ImageData = convertImageToBase64(imagePath);
+
+            // Create JSON payload
+            String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
+
+            // Make the POST request and handle the response
+            String response = callLLMVision( jsonPayload);
+            System.out.println("Response: " + response);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
           String text = "This is the first sentence. Here is another one! Is this the third sentence? Yes, it is. And this is the fifth one. Finally, this is the sixth sentence.";
 
         int sentencesPerChunk = 4;
@@ -624,6 +648,81 @@ public class OllamaHelpers {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+    
+    
+     /**
+     * Makes a POST request to the given URL with the provided JSON payload.
+     * 
+     * @param requestUrl  The URL to send the request to.
+     * @param jsonPayload The JSON payload as a String.
+     * @return The server's response as a String.
+     * @throws Exception If an error occurs during the HTTP request.
+     */
+    public static String callLLMVision( String jsonPayload) throws Exception {
+      //  URL url = new URL(requestUrl);
+         URL url = new URL(OLLAMA_EP+"/api/chat");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+
+        // Send JSON payload
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonPayload.getBytes("utf-8");
+            os.write(input, 0, input.length);
+        }
+
+        // Read response from the server
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                response.append(line.trim());
+            }
+        }
+
+        return response.toString();
+    }
+    
+        /**
+     * Creates a JSON payload for the chat API request.
+     * 
+     * @param model           The model to use.
+     * @param userMessage     The message content from the user.
+     * @param base64ImageData The base64-encoded image data.
+     * @return JSON payload as a String.
+     */
+    public static String createJsonPayload(String model, String userMessage, String base64ImageData) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("model", model);
+        jsonObject.put("stream", false);
+
+        JSONArray messages = new JSONArray();
+        JSONObject userMessageObject = new JSONObject();
+        userMessageObject.put("role", "user");
+        userMessageObject.put("content", userMessage);
+        userMessageObject.put("images", new JSONArray().put(base64ImageData));
+        messages.put(userMessageObject);
+
+        jsonObject.put("messages", messages);
+
+        return jsonObject.toString();
+    }
+    
+        /**
+     * Converts an image file to a Base64-encoded string.
+     * 
+     * @param imagePath Path to the image file.
+     * @return Base64-encoded string of the image.
+     * @throws IOException If an error occurs during file reading.
+     */
+    public static String convertImageToBase64(String imagePath) throws IOException {
+        File file = new File(imagePath);
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            byte[] imageBytes = fileInputStream.readAllBytes(); // Read the entire image file as a byte array
+            return Base64.getEncoder().encodeToString(imageBytes); // Encode the byte array to Base64
         }
     }
     
