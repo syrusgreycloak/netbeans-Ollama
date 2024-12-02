@@ -2,6 +2,7 @@ package com.stackleader.netbeans.chatgpt;
 
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
+import com.redbus.store.PDFReaderUtils;
 import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.callLLMVision;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.convertImageToBase64;
@@ -242,6 +243,48 @@ public class ChatTopComponent extends TopComponent {
         });
         actionsPanel.add(indexButton);
         
+         //Search action
+        JButton pdfaddButton = new JButton(ImageUtilities.loadImageIcon("icons/pdf16x16.png", true));
+        pdfaddButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                String selectedModel = (String) modelSelection.getSelectedItem();
+                
+                File selectedFile = PDFReaderUtils.selectPDFFile();
+                if (selectedFile != null) {
+                   // String pdfContent = PDFReaderUtils.extractTextFromPDF(selectedFile);
+                    String[] pdfPara=PDFReaderUtils.extractTextInChunks(selectedFile,256);
+//                    if (pdfContent != null) {
+//                        System.out.println("PDF Content:\n" + pdfContent);
+//                        appendText(pdfContent);
+//                        
+//                    } else {
+//                        System.out.println("Failed to extract text from the selected PDF.");
+//                    }
+                    
+                    // Paragraph printing for comparision
+                    appendText(selectedModel + " is being used ... \n");
+                    for(String para:pdfPara){
+                        appendText(para);
+                        //Add PDF OCR data to memory
+                        List<String> chat1 = Arrays.asList( para);
+                        double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                        chat1 = Arrays.asList( para,selectedFile.getAbsolutePath());
+                        //The key for storage is Project-name and the sys-millisec
+                        store.storeChat(selectedFile.getName(), chat1, embedding1);
+                        appendText("[+m]\n"); 
+                    }
+                    
+                     appendText(selectedFile.getName()+" [PDF INDEXING COMPLETE] \n");
+                    
+                } else {
+                    System.out.println("No file selected.");
+                }
+            }
+        });
+        actionsPanel.add(pdfaddButton);
+        
         
          //Search action
         JButton searchButton = new JButton(ImageUtilities.loadImageIcon("icons/glass.png", true));
@@ -461,8 +504,16 @@ private void handleLinkClick(String link) {
                     // Make the POST request and handle the response
                     String response = callLLMVision(jsonPayload);
                     JSONObject jresp=new JSONObject(response);
+                    String llmresp=jresp.getJSONObject("message").getString("content");
                     System.out.println("Response: " + response);
                     appendText("\n"+jresp.getJSONObject("message").getString("content")+"\n");
+                    //Add Image OCR data to memory
+                    List<String> chat1 = Arrays.asList( llmresp);
+                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                    chat1 = Arrays.asList( llmresp,selectedFile.getAbsolutePath());
+                    //The key for storage is Project-name and the sys-millisec
+                    store.storeChat(selectedFile.getName(), chat1, embedding1);
+                    appendText("[+m]\n"); 
             } else {
                 System.out.println("No file selected.");
             }
