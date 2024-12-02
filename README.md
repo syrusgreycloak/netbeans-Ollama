@@ -10,13 +10,21 @@ This plugin allows you to use Ollama and OpenAI APIs to generate chat responses 
 
 ![Screenshot](screenshots/ollamaCodeDetect.png)
 
-Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
-![Screenshot](screenshots/OpenAIKeyError.png)
 
 ### Search Chat History (RAG)
 Search is added for the chat history. This can search all the history of chats and give back the response and code based on what is put into the input text area.  Please ensure Ollama has this model -> "nomic-embed-text:latest".
 
 ![image](https://github.com/user-attachments/assets/864161ac-d4df-43a6-82cf-53c4a4bebd44)
+
+
+### Vision OCR options is included
+Model used: llama3.2-vision
+![image](https://github.com/user-attachments/assets/1db941e5-681c-47c3-bfec-e1a5501d8814)
+
+
+Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
+![Screenshot](screenshots/OpenAIKeyError.png)
+
 
 ## Installation
 
