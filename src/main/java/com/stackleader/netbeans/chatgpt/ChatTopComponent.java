@@ -514,6 +514,9 @@ private void handleLinkClick(String link) {
                     //The key for storage is Project-name and the sys-millisec
                     store.storeChat(selectedFile.getName(), chat1, embedding1);
                     appendText("[+m]\n"); 
+                    
+                    //Display image
+                    PDFReaderUtils.displayImageWithLabel(selectedFile,null,llmresp);
             } else {
                 System.out.println("No file selected.");
             }

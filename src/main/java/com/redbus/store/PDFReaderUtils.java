@@ -8,6 +8,11 @@ package com.redbus.store;
  *
  * @author manoj.kumar
  */
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
@@ -16,6 +21,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.imageio.ImageIO;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
 public class PDFReaderUtils {
      public static void main(String[] args) {
@@ -47,6 +55,36 @@ public class PDFReaderUtils {
             }
         } else {
             System.out.println("No file selected.");
+        }
+        
+        
+      String outputDirectory = "output"; // Directory to save images
+
+        // Create the output directory if it doesn't exist
+        File outputDir = new File(outputDirectory);
+        if (!outputDir.exists()) {
+            outputDir.mkdir();
+        }
+
+        try (PDDocument document = PDDocument.load(selectedFile)) {
+            // Create a PDFRenderer to render PDF pages
+            PDFRenderer renderer = new PDFRenderer(document);
+
+            // Loop through each page and save it as an image
+            for (int pageNumber = 0; pageNumber < document.getNumberOfPages(); pageNumber++) {
+                BufferedImage bufferedImage = renderer.renderImageWithDPI(pageNumber, 300); // 300 DPI for high-quality images
+
+                // Create output file name
+                String outputFilePath = String.format("%s/page_%d.png", outputDirectory, pageNumber + 1);
+
+                // Save the image
+                ImageIO.write(bufferedImage, "PNG", new File(outputFilePath));
+                System.out.println("Extracted Page " + (pageNumber + 1) + " to " + outputFilePath);
+            }
+
+            System.out.println("All pages have been extracted successfully.");
+        } catch (IOException e) {
+            System.err.println("Error processing PDF file: " + e.getMessage());
         }
     }
     
@@ -165,5 +203,66 @@ private static String[] splitTextIntoChunks(String text, int chunkSize) {
 
     return chunks.toArray(new String[0]);
 }
+
+    
+     /**
+     * Displays the selected image with a label below it in a new JDialog.
+     *
+     * @param imageFile the selected image file
+     * @param parent    the parent component for the dialog
+     */
+    public  static void displayImageWithLabel(File imageFile, Component parent, String label) throws IOException {
+        // Create a JDialog to display the image
+        JDialog dialog = new JDialog();
+        dialog.setTitle(imageFile.getName());
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setSize(1024, 800);
+
+        // Load the image and scale it
+        BufferedImage originalImage = ImageIO.read(imageFile);
+        Image scaledImage = scaleImage(originalImage, 1024, 800);
+
+        // Create an image label and a text label
+        JLabel imageLabel = new JLabel(new ImageIcon(scaledImage));
+        JTextArea fileNameLabel = new JTextArea(imageFile.getName()+": "+label, 10, 200);
+        fileNameLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        fileNameLabel.setLineWrap(true);
+        fileNameLabel.setWrapStyleWord(true);
+        fileNameLabel.setEditable(false);
+        fileNameLabel.setBackground(dialog.getBackground()); // Match background for a cleaner look
+
+        // Add components to the dialog
+        dialog.setLayout(new BorderLayout());
+        dialog.add(imageLabel, BorderLayout.CENTER);
+
+        JScrollPane labelScrollPane = new JScrollPane(fileNameLabel);
+        dialog.add(labelScrollPane, BorderLayout.SOUTH);
+
+        // Center the dialog relative to the parent component
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
+    }
+
+       /**
+     * Scales an image to fit within the given max width and height while maintaining aspect ratio.
+     *
+     * @param originalImage the original image to scale
+     * @param maxWidth      the maximum width of the scaled image
+     * @param maxHeight     the maximum height of the scaled image
+     * @return the scaled image
+     */
+    private static Image scaleImage(BufferedImage originalImage, int maxWidth, int maxHeight) {
+        int originalWidth = originalImage.getWidth();
+        int originalHeight = originalImage.getHeight();
+
+        double widthRatio = (double) maxWidth / originalWidth;
+        double heightRatio = (double) maxHeight / originalHeight;
+        double scaleFactor = Math.min(widthRatio, heightRatio);
+
+        int newWidth = (int) (originalWidth * scaleFactor);
+        int newHeight = (int) (originalHeight * scaleFactor);
+
+        return originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
+    }
 
 }
