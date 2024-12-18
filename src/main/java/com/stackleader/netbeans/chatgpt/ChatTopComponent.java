@@ -243,7 +243,17 @@ public class ChatTopComponent extends TopComponent {
         });
         actionsPanel.add(indexButton);
         
-         //Search action
+        //Index action
+        JButton bugLocatorButton = new JButton(ImageUtilities.loadImageIcon("icons/mite.png", true));
+        bugLocatorButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+               detectBugs();
+            }
+        });
+        actionsPanel.add(bugLocatorButton);
+        
+         //PDF action
         JButton pdfaddButton = new JButton(ImageUtilities.loadImageIcon("icons/pdf16x16.png", true));
         pdfaddButton.addActionListener(new ActionListener() {
             @Override
@@ -1044,6 +1054,68 @@ private void appendToOutputDocument(JEditorPane editorPane, String content) {
                 }
             });
     
+    }
+    
+    private void detectBugs(){
+        
+            Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
+            if (selectedProject == null) {
+                System.out.println("No project selected.");
+                return;
+            }
+
+            System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
+
+            // Start a background task using RequestProcessor
+            RequestProcessor.getDefault().post(new Runnable() {
+                @Override
+                public void run() {
+                    // Initialize ProgressHandle
+                    ProgressHandle progressHandle = ProgressHandle.createHandle("Bug Detection Project: " + selectedProject.getProjectDirectory().getName());
+                    progressHandle.start();  // Start the progress bar
+
+                    try {
+                        // Get the file dependencies
+                        Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
+                        appendText("==== Detecting Bugs ====\n");
+
+                        int totalFiles = result.size();
+                        int currentFile = 0;
+
+                        for (String key : result.keySet()) {
+                            appendText("<code> "+key + "\n");
+                            progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
+                            currentFile++;
+
+                            Path path = Paths.get(key);
+                            try {
+                                String fileContent = Files.readString(path);
+                                String userInput = inputTextArea.getText();
+                                String selectedModel = (String) modelSelection.getSelectedItem();
+                                appendText(selectedModel + " is being used ... \n");
+
+                                String prompt = (userInput.isBlank() ? "List the possible bugs, algorithm, and memory related issues in code provided.\n "
+                                        + "Also provide the code snippet that has the bug.\n If code looks good, then appreciate the good work." : userInput) + fileContent;
+                                JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+
+                                if (codeSummary != null) {
+                                    String llmresp=codeSummary.getString("response") ;
+                                    appendText(llmresp + "\n");
+                                }
+                            } catch (Exception ex) {
+                                Exceptions.printStackTrace(ex);
+                            }
+                        }
+
+                        appendText("==== Completed tasks for bug identifications ====\n");
+                        appendText("==== I can't raise bug in Github or JIRA yet ====\n");
+                       
+                    } finally {
+                        // Complete the progress handle to stop the progress bar
+                        progressHandle.finish();
+                    }
+                }
+            });
     }
     
     private void searchIndex(){
