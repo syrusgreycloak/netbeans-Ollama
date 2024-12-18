@@ -18,13 +18,13 @@ Search is added for the chat history. This can search all the history of chats a
 
 
 ### Vision OCR options is included
+
 Model used: llama3.2-vision
+
 ![image](https://github.com/user-attachments/assets/1db941e5-681c-47c3-bfec-e1a5501d8814)
 
 
-Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
-![Screenshot](screenshots/OpenAIKeyError.png)
-
+### Code Quality Verification Task 
 A task is added, when clicked, it will detect possible bugs and other issues in code.
 
 ![image](https://github.com/user-attachments/assets/d46262ed-2b5a-42bb-b105-41c0210d091a)
@@ -33,7 +33,13 @@ A task is added, when clicked, it will detect possible bugs and other issues in 
 ![image](https://github.com/user-attachments/assets/56dc296a-b154-4544-840d-9d2781a525b8)
 
 It can also appreciate the good work :)
+
 ![Screenshot 2024-12-18 122833](https://github.com/user-attachments/assets/e89d8af6-8b0b-4c63-83cd-304c8ba9ee64)
+
+### OpenAI Error Message
+
+Incase you key is incorrect for OpenAI, you get this error. This integration is not well tested fot OpenAI Keys, if anyone can test and let me know it works, I will update this section.
+![Screenshot](screenshots/OpenAIKeyError.png)
 
 ## Installation
 
