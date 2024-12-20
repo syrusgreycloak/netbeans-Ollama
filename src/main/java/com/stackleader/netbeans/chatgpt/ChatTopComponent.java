@@ -19,6 +19,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -44,6 +45,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
@@ -111,6 +113,7 @@ public class ChatTopComponent extends TopComponent {
     private OpenAiService service;
     MapDBVectorStore store;
     private static final RequestProcessor RP = new RequestProcessor(ChatTopComponent.class);
+    DefaultTableModel taskTableModel ;
 
     public ChatTopComponent() {
         setName(NbBundle.getMessage(ChatTopComponent.class, "Chat_TopComponent_Title")); // NOI18N
@@ -127,10 +130,10 @@ public class ChatTopComponent extends TopComponent {
                 return;
             }
         }
-        
+
         //Set Plugin Home Directory
         String pluginHomeDir = prefs.get(Configuration.PLUGIN_HOME_DIR, null);
-         if (pluginHomeDir == null || pluginHomeDir.isEmpty()) {
+        if (pluginHomeDir == null || pluginHomeDir.isEmpty()) {
             // Set a default home directory if none exists
             pluginHomeDir = System.getProperty("user.home") + File.separator + "MyPluginData";
             prefs.put(Configuration.PLUGIN_HOME_DIR, pluginHomeDir);
@@ -152,36 +155,41 @@ public class ChatTopComponent extends TopComponent {
         // Continue with plugin initialization
         System.out.println("Plugin initialized with home directory: " + pluginHomeDir);
         
+        //Task List
+        //Task Table
+        String[] columnNames = {"Task", "Description","Code File", "Status"};
+        taskTableModel = new DefaultTableModel(columnNames, 0);
+
         addComponentsToFrame();
         service = new OpenAiService(token);
-        
+
         //Function calls
         IDEHelper.registerFunction(new FilesList());
-        
+
         //Initiate Vector Store
-        store = new MapDBVectorStore(pluginHomeDir+"/MKVECOLLAMA.db");
-        
-       // String currentDirectory = System.getProperty("user.dir");
-        appendText("Plugin working directory: "+pluginHomeDir+"\n");
-        appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  "+pluginHomeDir+"\n");
+        store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db");
+
+        // String currentDirectory = System.getProperty("user.dir");
+        appendText("Plugin working directory: " + pluginHomeDir + "\n");
+        appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  " + pluginHomeDir + "\n");
         //nomic-embed-text
         //llama3.2-vision
         //llama3.2:1b
         appendText("Vector store : MKVECOLLAMA.db \n");
-        
-        
-         
+
         //Get Project Info
         // Get the currently opened projects
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
         appendText("Open Projects that I can access:\n");
-        for(Project project:openProjects){
-           // JOptionPane.showConfirmDialog(outputTextArea,"Open Projects: "+ OpenProjects.getDefault().getOpenProjects()[0].getProjectDirectory().getPath());//Testing here
-        appendText(project.getProjectDirectory().getName()+":"+project.getProjectDirectory().getPath()+"\n");
+        for (Project project : openProjects) {
+            // JOptionPane.showConfirmDialog(outputTextArea,"Open Projects: "+ OpenProjects.getDefault().getOpenProjects()[0].getProjectDirectory().getPath());//Testing here
+            appendText(project.getProjectDirectory().getName() + ":" + project.getProjectDirectory().getPath() + "\n");
         }
+        
+       
 
     }
-    
+
     private String promptForToken() {
         NotifyDescriptor.InputLine inputLine = new NotifyDescriptor.InputLine(
                 "Enter OpenAI API Token:",
@@ -203,7 +211,7 @@ public class ChatTopComponent extends TopComponent {
     private void addComponentsToFrame() {
         add(createActionsPanel(), BorderLayout.WEST);
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.add(createOutputScrollPane(), BorderLayout.CENTER); // createOutputJEditorPane()  createOutputScrollPane()
+        mainPanel.add(createTabbedPane(), BorderLayout.CENTER); // createOutputJEditorPane()  createOutputScrollPane()
         //createOutputScrollPane();//Place holder code, remove afterwards.
         //mainPanel.add(createOutputJEditorPane(), BorderLayout.EAST); // createOutputJEditorPane()  createOutputScrollPane()
         mainPanel.add(createBottomPanel(), BorderLayout.SOUTH);
@@ -232,39 +240,39 @@ public class ChatTopComponent extends TopComponent {
             }
         });
         actionsPanel.add(optionsButton);
-        
+
         //Index action
         JButton indexButton = new JButton(ImageUtilities.loadImageIcon("icons/index.png", true));
         indexButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-               indexProject();
+                indexProject();
             }
         });
         actionsPanel.add(indexButton);
-        
+
         //Index action
         JButton bugLocatorButton = new JButton(ImageUtilities.loadImageIcon("icons/mite.png", true));
         bugLocatorButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-               detectBugs();
+                detectBugs();
             }
         });
         actionsPanel.add(bugLocatorButton);
-        
-         //PDF action
+
+        //PDF action
         JButton pdfaddButton = new JButton(ImageUtilities.loadImageIcon("icons/pdf16x16.png", true));
         pdfaddButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
 
                 String selectedModel = (String) modelSelection.getSelectedItem();
-                
+
                 File selectedFile = PDFReaderUtils.selectPDFFile();
                 if (selectedFile != null) {
-                   // String pdfContent = PDFReaderUtils.extractTextFromPDF(selectedFile);
-                    String[] pdfPara=PDFReaderUtils.extractTextInChunks(selectedFile,256);
+                    // String pdfContent = PDFReaderUtils.extractTextFromPDF(selectedFile);
+                    String[] pdfPara = PDFReaderUtils.extractTextInChunks(selectedFile, 256);
 //                    if (pdfContent != null) {
 //                        System.out.println("PDF Content:\n" + pdfContent);
 //                        appendText(pdfContent);
@@ -272,41 +280,39 @@ public class ChatTopComponent extends TopComponent {
 //                    } else {
 //                        System.out.println("Failed to extract text from the selected PDF.");
 //                    }
-                    
+
                     // Paragraph printing for comparision
                     appendText(selectedModel + " is being used ... \n");
-                    for(String para:pdfPara){
+                    for (String para : pdfPara) {
                         appendText(para);
                         //Add PDF OCR data to memory
-                        List<String> chat1 = Arrays.asList( para);
+                        List<String> chat1 = Arrays.asList(para);
                         double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                        chat1 = Arrays.asList( para,selectedFile.getAbsolutePath());
+                        chat1 = Arrays.asList(para, selectedFile.getAbsolutePath());
                         //The key for storage is Project-name and the sys-millisec
                         store.storeChat(selectedFile.getName(), chat1, embedding1);
-                        appendText("[+m]\n"); 
+                        appendText("[+m]\n");
                     }
-                    
-                     appendText(selectedFile.getName()+" [PDF INDEXING COMPLETE] \n");
-                    
+
+                    appendText(selectedFile.getName() + " [PDF INDEXING COMPLETE] \n");
+
                 } else {
                     System.out.println("No file selected.");
                 }
             }
         });
         actionsPanel.add(pdfaddButton);
-        
-        
-         //Search action
+
+        //Search action
         JButton searchButton = new JButton(ImageUtilities.loadImageIcon("icons/glass.png", true));
         searchButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-               searchIndex();
+                searchIndex();
             }
         });
         actionsPanel.add(searchButton);
-        
-        
+
         return actionsPanel;
     }
 
@@ -326,6 +332,83 @@ public class ChatTopComponent extends TopComponent {
             prefs.put(Configuration.OPENAI_TOKEN_KEY, newToken);
             service = new OpenAiService(newToken);
         }
+    }
+
+    private JTabbedPane createTabbedPane() {
+        // Create a tabbed pane
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        // Add Output Tab
+        JPanel outputPanel = createOutputScrollPane();
+        tabbedPane.addTab("Assistant", null, outputPanel, "View Output");
+
+        // Add Task List Tab
+        JPanel taskListPanel = createTaskListPanel();
+        tabbedPane.addTab("Task List", null, taskListPanel, "Manage Tasks");
+
+        return tabbedPane;
+    }
+
+    private JPanel createTaskListPanel() {
+        JPanel taskListPanel = new JPanel(new BorderLayout());
+
+ 
+        
+        JTable taskTable = new JTable(taskTableModel);
+        JScrollPane taskScrollPane = new JScrollPane(taskTable);
+        taskListPanel.add(taskScrollPane, BorderLayout.CENTER);
+
+        // Buttons Panel
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton addTaskButton = new JButton("Add Task");
+        JButton removeTaskButton = new JButton("Remove Task");
+        JButton verifyTasksButton = new JButton("Verify Tasks");
+
+        buttonsPanel.add(addTaskButton);
+        buttonsPanel.add(removeTaskButton);
+        buttonsPanel.add(verifyTasksButton);
+        taskListPanel.add(buttonsPanel, BorderLayout.SOUTH);
+
+        // Add Task Button Action
+        addTaskButton.addActionListener(e -> {
+            String taskText = JOptionPane.showInputDialog(taskListPanel, "Enter Task Description:");
+            if (taskText != null && !taskText.trim().isEmpty()) {
+                TaskManager.getInstance().addTask(taskText.trim(),"NA");
+                refreshTaskTable(taskTableModel);
+            }
+        });
+
+        // Remove Task Button Action
+        removeTaskButton.addActionListener(e -> {
+            int selectedRow = taskTable.getSelectedRow();
+            if (selectedRow != -1) {
+                int taskId = (int) taskTable.getValueAt(selectedRow, 0); // Assuming the task ID is in the first column
+                TaskManager.getInstance().removeTask(taskId);
+                refreshTaskTable(taskTableModel);
+            } else {
+                JOptionPane.showMessageDialog(taskListPanel, "Please select a task to remove.");
+            }
+        });
+
+        // Verify Tasks Button Action
+        verifyTasksButton.addActionListener(e -> {
+            TaskManager.getInstance().verifyTaskCompletion();
+            refreshTaskTable(taskTableModel);
+        });
+
+        // Initial Population of Task Table
+        refreshTaskTable(taskTableModel);
+
+        return taskListPanel;
+    }
+
+    private void refreshTaskTable(DefaultTableModel taskTableModel) {
+        taskTableModel.setRowCount(0); // Clear existing rows
+
+        // Populate with current tasks
+        TaskManager.getInstance().getAllTasks().forEach(task -> {
+            taskTableModel.addRow(new Object[]{task.getId(), task.getDescription(),task.getCodeFile(), task.getStatus()});
+        });
     }
 
     private JPanel createOutputScrollPane() {
@@ -357,79 +440,78 @@ public class ChatTopComponent extends TopComponent {
         outputTextArea.setLinkGenerator(new CodeBlockLinkGenerator());
         return outputTextArea;
     }
-    
+
     private JEditorPane createOutputJEditorPane() {
-    // Create a JEditorPane
-    JEditorPane outputTextArea = new JEditorPane();
-    outputTextArea.setContentType("text/html"); // Enable HTML support
+        // Create a JEditorPane
+        JEditorPane outputTextArea = new JEditorPane();
+        outputTextArea.setContentType("text/html"); // Enable HTML support
 
-    // Get UI defaults
-    UIDefaults defaults = UIManager.getLookAndFeelDefaults();
-    Color bg = defaults.getColor("EditorPane.background");
-    Color fg = defaults.getColor("EditorPane.foreground");
-    Color menuBackground = defaults.getColor("Menu.background");
-    Color selectedTextColor = new Color(100, 149, 237);
+        // Get UI defaults
+        UIDefaults defaults = UIManager.getLookAndFeelDefaults();
+        Color bg = defaults.getColor("EditorPane.background");
+        Color fg = defaults.getColor("EditorPane.foreground");
+        Color menuBackground = defaults.getColor("Menu.background");
+        Color selectedTextColor = new Color(100, 149, 237);
 
-    // Set colors and styles
-    outputTextArea.setForeground(fg);
-    outputTextArea.setBackground(menuBackground);
-    outputTextArea.setEditable(false); // Make it read-only
+        // Set colors and styles
+        outputTextArea.setForeground(fg);
+        outputTextArea.setBackground(menuBackground);
+        outputTextArea.setEditable(false); // Make it read-only
 
-    // Style with CSS
-    String style = String.format(" <style>\n" +
-"                body {\n" +
-"                    background-color: rgb(%d, %d, %d);\n" +
-"                    color: rgb(%d, %d, %d);\n" +
-"                    font-family: Arial, sans-serif;\n" +
-"                    line-height: 1.5;\n" +
-"                }\n" +
-"                a {\n" +
-"                    color: rgb(%d, %d, %d);\n" +
-"                    text-decoration: none;\n" +
-"                }\n" +
-"                a:hover {\n" +
-"                    text-decoration: underline;\n" +
-"                }\n" +
-"            </style>",
-            menuBackground.getRed(), menuBackground.getGreen(), menuBackground.getBlue(),
-            fg.getRed(), fg.getGreen(), fg.getBlue(),
-            selectedTextColor.getRed(), selectedTextColor.getGreen(), selectedTextColor.getBlue()
-    );
+        // Style with CSS
+        String style = String.format(" <style>\n"
+                + "                body {\n"
+                + "                    background-color: rgb(%d, %d, %d);\n"
+                + "                    color: rgb(%d, %d, %d);\n"
+                + "                    font-family: Arial, sans-serif;\n"
+                + "                    line-height: 1.5;\n"
+                + "                }\n"
+                + "                a {\n"
+                + "                    color: rgb(%d, %d, %d);\n"
+                + "                    text-decoration: none;\n"
+                + "                }\n"
+                + "                a:hover {\n"
+                + "                    text-decoration: underline;\n"
+                + "                }\n"
+                + "            </style>",
+                menuBackground.getRed(), menuBackground.getGreen(), menuBackground.getBlue(),
+                fg.getRed(), fg.getGreen(), fg.getBlue(),
+                selectedTextColor.getRed(), selectedTextColor.getGreen(), selectedTextColor.getBlue()
+        );
 
-    // Set initial content with custom CSS
-    outputTextArea.setText("<html>" + style + "<body></body></html>");
+        // Set initial content with custom CSS
+        outputTextArea.setText("<html>" + style + "<body></body></html>");
 
-    // Add a HyperlinkListener for link handling
-    outputTextArea.addHyperlinkListener(event -> {
-        if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-            System.out.println("Link clicked: " + event.getDescription());
-            // Handle link clicks (e.g., navigate or open files)
-            handleLinkClick(event.getDescription());
-        }
-    });
+        // Add a HyperlinkListener for link handling
+        outputTextArea.addHyperlinkListener(event -> {
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                System.out.println("Link clicked: " + event.getDescription());
+                // Handle link clicks (e.g., navigate or open files)
+                handleLinkClick(event.getDescription());
+            }
+        });
 
-    return outputTextArea;
-}
+        return outputTextArea;
+    }
 
-/**
- * Handles link clicks from the JEditorPane.
- *
- * @param link The link that was clicked
- */
-private void handleLinkClick(String link) {
-    if (link.startsWith("file://")) {
-        String filePath = link.substring(7); // Remove "file://"
-        System.out.println("Opening file: " + filePath);
-        // Implement logic to open the file in NetBeans or another editor
-    } else {
-        try { //Open in editor?
-            //Desktop.getDesktop().browse(new URI(link));
-        } catch (Exception e) {
-            e.printStackTrace();
+    /**
+     * Handles link clicks from the JEditorPane.
+     *
+     * @param link The link that was clicked
+     */
+    private void handleLinkClick(String link) {
+        if (link.startsWith("file://")) {
+            String filePath = link.substring(7); // Remove "file://"
+            System.out.println("Opening file: " + filePath);
+            // Implement logic to open the file in NetBeans or another editor
+        } else {
+            try { //Open in editor?
+                //Desktop.getDesktop().browse(new URI(link));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
-}
-
 
     private JPanel createBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
@@ -448,7 +530,7 @@ private void handleLinkClick(String link) {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.insets = new Insets(0, 5, 5, 5);
-        String[] models =OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(),new String[]{"gpt-3.5-turbo-1106","gpt-3.5-turbo-16k-0613", "gpt-4o"});
+        String[] models = OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(), new String[]{"gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-4o"});
         modelSelection = new JComboBox<>(models);
         modelSelection.setSelectedItem(models[0]);
         buttonPanel.add(modelSelection, gbc);
@@ -456,7 +538,7 @@ private void handleLinkClick(String link) {
         JButton resetButton = createResetButton();
         buttonPanel.add(resetButton, gbc);
         gbc.gridy++;
-        JButton imageButton =createImageAddButton();
+        JButton imageButton = createImageAddButton();
         buttonPanel.add(imageButton, gbc);
 
 //        gbc.gridy++;
@@ -480,7 +562,7 @@ private void handleLinkClick(String link) {
         });
         return resetButton;
     }
-    
+
     private JButton createImageAddButton() {
         final JButton resetButton = createButton("Image-OCR");
         resetButton.addActionListener(new ActionListener() {
@@ -488,50 +570,49 @@ private void handleLinkClick(String link) {
             public void actionPerformed(ActionEvent e) {
 
                 try {
-                    
-                     JFileChooser fileChooser = new JFileChooser();
 
-            // Set the file filter to allow only image files
-            FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                "Image Files (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"
-            );
-            fileChooser.setFileFilter(filter);
+                    JFileChooser fileChooser = new JFileChooser();
 
-            // Open the file chooser dialog
-            int result = fileChooser.showOpenDialog(null);
+                    // Set the file filter to allow only image files
+                    FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                            "Image Files (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"
+                    );
+                    fileChooser.setFileFilter(filter);
 
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
-                 String model = "llama3.2-vision";
-                    String userMessage = inputTextArea.getText().isBlank()?"what is in this image?": inputTextArea.getText();
-                    // Convert image to Base64
-                    String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
+                    // Open the file chooser dialog
+                    int result = fileChooser.showOpenDialog(null);
 
-                    // Create JSON payload
-                    String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
+                    if (result == JFileChooser.APPROVE_OPTION) {
+                        File selectedFile = fileChooser.getSelectedFile();
+                        System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
+                        String model = "llama3.2-vision";
+                        String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
+                        // Convert image to Base64
+                        String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
 
-                    // Make the POST request and handle the response
-                    String response = callLLMVision(jsonPayload);
-                    JSONObject jresp=new JSONObject(response);
-                    String llmresp=jresp.getJSONObject("message").getString("content");
-                    System.out.println("Response: " + response);
-                    appendText("\n"+jresp.getJSONObject("message").getString("content")+"\n");
-                    //Add Image OCR data to memory
-                    List<String> chat1 = Arrays.asList( llmresp);
-                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                    chat1 = Arrays.asList( llmresp,selectedFile.getAbsolutePath());
-                    //The key for storage is Project-name and the sys-millisec
-                    store.storeChat(selectedFile.getName(), chat1, embedding1);
-                    appendText("[+m]\n"); 
-                    
-                    //Display image
-                    PDFReaderUtils.displayImageWithLabel(selectedFile,null,llmresp);
-            } else {
-                System.out.println("No file selected.");
-            }
-            
-                   
+                        // Create JSON payload
+                        String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
+
+                        // Make the POST request and handle the response
+                        String response = callLLMVision(jsonPayload);
+                        JSONObject jresp = new JSONObject(response);
+                        String llmresp = jresp.getJSONObject("message").getString("content");
+                        System.out.println("Response: " + response);
+                        appendText("\n" + jresp.getJSONObject("message").getString("content") + "\n");
+                        //Add Image OCR data to memory
+                        List<String> chat1 = Arrays.asList(llmresp);
+                        double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                        chat1 = Arrays.asList(llmresp, selectedFile.getAbsolutePath());
+                        //The key for storage is Project-name and the sys-millisec
+                        store.storeChat(selectedFile.getName(), chat1, embedding1);
+                        appendText("[+m]\n");
+
+                        //Display image
+                        PDFReaderUtils.displayImageWithLabel(selectedFile, null, llmresp);
+                    } else {
+                        System.out.println("No file selected.");
+                    }
+
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -551,28 +632,26 @@ private void handleLinkClick(String link) {
         });
         return submitButton;
     }
-    
-    
-     
-private JButton createIndexButton() {
-    final JButton submitButton = createButton("Index Project");
 
-    submitButton.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            indexProject();
-        }
-    });
+    private JButton createIndexButton() {
+        final JButton submitButton = createButton("Index Project");
 
-    return submitButton;
-}
-     
-     private JButton createChatHistoryButton() {
+        submitButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                indexProject();
+            }
+        });
+
+        return submitButton;
+    }
+
+    private JButton createChatHistoryButton() {
         final JButton submitButton = createButton("Search History");
         submitButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-              searchIndex();
+                searchIndex();
             }
         });
         return submitButton;
@@ -612,38 +691,35 @@ private JButton createIndexButton() {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-               
-                
-                
+
                 //Get Editior
-                JTextComponent editorPane = EditorRegistry.lastFocusedComponent();  
-                
-                String selectedText=editorPane.getSelectedText();
-                if(selectedText!=null && (!selectedText.isBlank())){
-                    final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput+"( in context of "+selectedText+")");
+                JTextComponent editorPane = EditorRegistry.lastFocusedComponent();
+
+                String selectedText = editorPane.getSelectedText();
+                if (selectedText != null && (!selectedText.isBlank())) {
+                    final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput + "( in context of " + selectedText + ")");
                     messages.add(userMessage);
-                }
-                else{
+                } else {
                     final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput);
                     messages.add(userMessage);
                 }
-                
-                 appendToOutputDocument("User: ");
+
+                appendToOutputDocument("User: ");
                 appendToOutputDocument(System.lineSeparator());
                 appendToOutputDocument(userInput);
                 appendToOutputDocument(System.lineSeparator());
                 if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel)) {
-                    
-                    appendToOutputDocument("Ollama("+selectedModel+"): responding...");
 
-                    String llmResp=OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content");
+                    appendToOutputDocument("Ollama(" + selectedModel + "): responding...");
+
+                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp);
                     //
                     //Store chat 
-                     List<String> chat1 = Arrays.asList(userInput, llmResp);
+                    List<String> chat1 = Arrays.asList(userInput, llmResp);
                     double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                    store.storeChat("NBCHAT-"+System.currentTimeMillis(), chat1, embedding1);
-                    appendText("[+m]\n");                   
+                    store.storeChat("NBCHAT-" + System.currentTimeMillis(), chat1, embedding1);
+                    appendText("[+m]\n");
                     return null;
                 } else {
                     callChatGPT(userInput);
@@ -712,9 +788,9 @@ private JButton createIndexButton() {
         worker.execute();
         inputTextArea.setText("");
     }
-    
-     // Method to append content to outputTextArea and handle code annotations
-     // Method to append content to outputTextArea and show code blocks in pop-ups
+
+    // Method to append content to outputTextArea and handle code annotations
+    // Method to append content to outputTextArea and show code blocks in pop-ups
     private void appendToOutputDocumentOllama(String content) {
         // Split the content by code block marker (```)
         String[] parts = content.split("```");
@@ -726,82 +802,83 @@ private JButton createIndexButton() {
                 // Even index: regular text (outside code blocks)
                 appendText(part);
             } else {
-                String language=part.split("\\r?\\n")[0];
-                part=part.substring(language.length());
+                String language = part.split("\\r?\\n")[0];
+                part = part.substring(language.length());
                 // Odd index: code block, show in RSyntaxTextArea with syntax highlighting
                 showCodeInPopup(part.trim(), language);  // Assuming Java for this example
                 appendText(part);
             }
         }
-        
+
         //
-         appendToOutputDocumentOllama(editorPane,  content);
+        appendToOutputDocumentOllama(editorPane, content);
     }
 
     /**
- * Appends content to the JEditorPane. Supports text and code blocks.
- *
- * @param editorPane The JEditorPane to append content to.
- * @param content    The content to append, supporting Markdown-style code blocks.
- */
-private void appendToOutputDocumentOllama(JEditorPane editorPane, String content) {
-    try {
-        // Get the document and editor kit
-        HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
-        HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
+     * Appends content to the JEditorPane. Supports text and code blocks.
+     *
+     * @param editorPane The JEditorPane to append content to.
+     * @param content The content to append, supporting Markdown-style code
+     * blocks.
+     */
+    private void appendToOutputDocumentOllama(JEditorPane editorPane, String content) {
+        try {
+            // Get the document and editor kit
+            HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
+            HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
 
-        // Split content into parts by code block markers
-        String[] parts = content.split("```");
+            // Split content into parts by code block markers
+            String[] parts = content.split("```");
 
-        for (int i = 0; i < parts.length; i++) {
-            String part = parts[i];
+            for (int i = 0; i < parts.length; i++) {
+                String part = parts[i];
 
-            if (i % 2 == 0) {
-                // Even index: Regular text (outside code blocks)
-                editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(part) + "</p>", 0, 0, null);
-            } else {
-                // Odd index: Code block (```language\n<code>```)
-                String[] lines = part.split("\\r?\\n", 2);
-                String language = lines[0]; // First line indicates the language
-                String code = (lines.length > 1) ? lines[1] : "";
+                if (i % 2 == 0) {
+                    // Even index: Regular text (outside code blocks)
+                    editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(part) + "</p>", 0, 0, null);
+                } else {
+                    // Odd index: Code block (```language\n<code>```)
+                    String[] lines = part.split("\\r?\\n", 2);
+                    String language = lines[0]; // First line indicates the language
+                    String code = (lines.length > 1) ? lines[1] : "";
 
-                // Add code block with styling
-                String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
-                                    "<code>" + escapeHtml(code.trim()) + "</code></pre>";
-                editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                    // Add code block with styling
+                    String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>"
+                            + "<code>" + escapeHtml(code.trim()) + "</code></pre>";
+                    editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                }
             }
+
+            // Scroll to the latest addition
+            editorPane.setCaretPosition(doc.getLength());
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-
-        // Scroll to the latest addition
-        editorPane.setCaretPosition(doc.getLength());
-    } catch (Exception ex) {
-        ex.printStackTrace();
     }
-}
 
-/**
- * Escapes special HTML characters in a string.
- *
- * @param text The text to escape.
- * @return The escaped HTML text.
- */
-private String escapeHtml(String text) {
-    return text.replace("&", "&amp;")
-               .replace("<", "&lt;")
-               .replace(">", "&gt;")
-               .replace("\"", "&quot;")
-               .replace("'", "&#39;");
-}
+    /**
+     * Escapes special HTML characters in a string.
+     *
+     * @param text The text to escape.
+     * @return The escaped HTML text.
+     */
+    private String escapeHtml(String text) {
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
 
     // Method to append text to the outputTextArea
     private void appendText(String text) {
         SwingUtilities.invokeLater(() -> {
             outputTextArea.append(text);
         });
-        
-        appendText(editorPane,  text);
+
+        appendText(editorPane, text);
     }
-    
+
     /**
      * Appends the given text (HTML supported) to the JEditorPane.
      *
@@ -824,7 +901,6 @@ private String escapeHtml(String text) {
         }
     }
 
-
     // Method to show the identified code in RSyntaxTextArea with "Copy to Clipboard" option
     private void showCodeInPopup(String code, String language) {
         SwingUtilities.invokeLater(() -> {
@@ -844,7 +920,7 @@ private String escapeHtml(String text) {
 
             // Show the dialog with RSyntaxTextArea embedded
             int result = JOptionPane.showOptionDialog(
-                    null, scrollPane, "Code Block Detected ("+language+")",
+                    null, scrollPane, "Code Block Detected (" + language + ")",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.PLAIN_MESSAGE,
                     null, options, options[0]
@@ -886,7 +962,7 @@ private String escapeHtml(String text) {
                 return SyntaxConstants.SYNTAX_STYLE_NONE;
         }
     }
-    
+
     private void appendToOutputDocument(String content) {
         if (content.startsWith("```")) {
             if (shouldAnnotateCodeBlock) {
@@ -917,60 +993,61 @@ private String escapeHtml(String text) {
                 outputTextArea.append(content);
             });
         }
-        
+
         //
-         appendToOutputDocument(editorPane, content) ;
+        appendToOutputDocument(editorPane, content);
 
     }
 
     /**
- * Appends content to the JEditorPane, handling code blocks and annotations dynamically.
- *
- * @param editorPane The JEditorPane to append content to.
- * @param content    The content to append, supporting Markdown-style code blocks.
- */
-private void appendToOutputDocument(JEditorPane editorPane, String content) {
-    SwingUtilities.invokeLater(() -> {
-        try {
-            // Get the document and editor kit
-            HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
-            HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
+     * Appends content to the JEditorPane, handling code blocks and annotations
+     * dynamically.
+     *
+     * @param editorPane The JEditorPane to append content to.
+     * @param content The content to append, supporting Markdown-style code
+     * blocks.
+     */
+    private void appendToOutputDocument(JEditorPane editorPane, String content) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Get the document and editor kit
+                HTMLDocument doc = (HTMLDocument) editorPane.getDocument();
+                HTMLEditorKit editorKit = (HTMLEditorKit) editorPane.getEditorKit();
 
-            if (content.startsWith("```")) {
-                // Handle code block
-                int newlinePos = content.indexOf("\n");
+                if (content.startsWith("```")) {
+                    // Handle code block
+                    int newlinePos = content.indexOf("\n");
 
-                if (newlinePos != -1) {
-                    // Split content into annotation and code block
-                    String beforeNewline = content.substring(0, newlinePos).trim();
-                    String afterNewline = content.substring(newlinePos).trim();
+                    if (newlinePos != -1) {
+                        // Split content into annotation and code block
+                        String beforeNewline = content.substring(0, newlinePos).trim();
+                        String afterNewline = content.substring(newlinePos).trim();
 
-                    String annotatedContent = escapeHtml(beforeNewline) + " <span style='color:blue; font-style:italic;'>[Quick Copy]</span>";
-                    String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
-                                        "<code>" + escapeHtml(afterNewline) + "</code></pre>";
+                        String annotatedContent = escapeHtml(beforeNewline) + " <span style='color:blue; font-style:italic;'>[Quick Copy]</span>";
+                        String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>"
+                                + "<code>" + escapeHtml(afterNewline) + "</code></pre>";
 
-                    // Append annotation and code block
-                    editorKit.insertHTML(doc, doc.getLength(), annotatedContent, 0, 0, null);
-                    editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                        // Append annotation and code block
+                        editorKit.insertHTML(doc, doc.getLength(), annotatedContent, 0, 0, null);
+                        editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                    } else {
+                        // Append the content as-is if no newline found
+                        String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>"
+                                + "<code>" + escapeHtml(content) + "</code></pre>";
+                        editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                    }
                 } else {
-                    // Append the content as-is if no newline found
-                    String styledCode = "<pre style='background-color:#f4f4f4; color:#333; border:1px solid #ccc; padding:5px;'>" +
-                                        "<code>" + escapeHtml(content) + "</code></pre>";
-                    editorKit.insertHTML(doc, doc.getLength(), styledCode, 0, 0, null);
+                    // Append regular text
+                    editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(content) + "</p>", 0, 0, null);
                 }
-            } else {
-                // Append regular text
-                editorKit.insertHTML(doc, doc.getLength(), "<p>" + escapeHtml(content) + "</p>", 0, 0, null);
+
+                // Scroll to the latest addition
+                editorPane.setCaretPosition(doc.getLength());
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-
-            // Scroll to the latest addition
-            editorPane.setCaretPosition(doc.getLength());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    });
-}
-
+        });
+    }
 
     private void reset() {
         messages.clear();
@@ -980,161 +1057,169 @@ private void appendToOutputDocument(JEditorPane editorPane, String content) {
         });
     }
 
-
     /**
-     * 1. Get path to the folder,
-     * 2. Scan all the Java files
-     * 3. Create chunks of 256 characters,
-     * 4. Call embeddings,
-     * 5. Store them into MapDB vector store,
-     * 6. The vector db should be created with name of the project.
+     * 1. Get path to the folder, 2. Scan all the Java files 3. Create chunks of
+     * 256 characters, 4. Call embeddings, 5. Store them into MapDB vector
+     * store, 6. The vector db should be created with name of the project.
      */
-    private void indexProject(){
-        
-            Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
-            if (selectedProject == null) {
-                System.out.println("No project selected.");
-                return;
-            }
+    private void indexProject() {
 
-            System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
+        Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
+        if (selectedProject == null) {
+            System.out.println("No project selected.");
+            return;
+        }
 
-            // Start a background task using RequestProcessor
-            RequestProcessor.getDefault().post(new Runnable() {
-                @Override
-                public void run() {
-                    // Initialize ProgressHandle
-                    ProgressHandle progressHandle = ProgressHandle.createHandle("Indexing Project: " + selectedProject.getProjectDirectory().getName());
-                    progressHandle.start();  // Start the progress bar
+        System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
 
-                    try {
-                        // Get the file dependencies
-                        Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
-                        appendText("==== Generating Data for Code Search ====\n");
+        // Start a background task using RequestProcessor
+        RequestProcessor.getDefault().post(new Runnable() {
+            @Override
+            public void run() {
+                // Initialize ProgressHandle
+                ProgressHandle progressHandle = ProgressHandle.createHandle("Indexing Project: " + selectedProject.getProjectDirectory().getName());
+                progressHandle.start();  // Start the progress bar
 
-                        int totalFiles = result.size();
-                        int currentFile = 0;
+                try {
+                    // Get the file dependencies
+                    Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
+                    appendText("==== Generating Data for Code Search ====\n");
 
-                        for (String key : result.keySet()) {
-                            appendText(key + "\n");
-                            progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
-                            currentFile++;
+                    int totalFiles = result.size();
+                    int currentFile = 0;
 
-                            Path path = Paths.get(key);
-                            try {
-                                String fileContent = Files.readString(path);
-                                String userInput = inputTextArea.getText();
-                                String selectedModel = (String) modelSelection.getSelectedItem();
-                                appendText(selectedModel + " is being used ... \n");
+                    for (String key : result.keySet()) {
+                        appendText(key + "\n");
+                        progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
+                        currentFile++;
 
-                                String prompt = (userInput.isBlank() ? "Describe the file content given below in just one sentence.\n" : userInput) + fileContent;
-                                JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+                        Path path = Paths.get(key);
+                        try {
+                            String fileContent = Files.readString(path);
+                            String userInput = inputTextArea.getText();
+                            String selectedModel = (String) modelSelection.getSelectedItem();
+                            appendText(selectedModel + " is being used ... \n");
 
-                                if (codeSummary != null) {
-                                    String llmresp=codeSummary.getString("response") ;
-                                    appendText(llmresp + "\n");
-                                    
-                                    List<String> chat1 = Arrays.asList( llmresp);
-                                    double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                                    chat1 = Arrays.asList( llmresp,path.toFile().getAbsolutePath());
-                                    //The key for storage is Project-name and the sys-millisec
-                                    store.storeChat(selectedProject.getProjectDirectory().getName()+"-"+System.currentTimeMillis(), chat1, embedding1);
-                                }
-                            } catch (Exception ex) {
-                                Exceptions.printStackTrace(ex);
+                            String prompt = (userInput.isBlank() ? "Describe the file content given below in just one sentence.\n" : userInput) + fileContent;
+                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+
+                            if (codeSummary != null) {
+                                String llmresp = codeSummary.getString("response");
+                                appendText(llmresp + "\n");
+
+                                List<String> chat1 = Arrays.asList(llmresp);
+                                double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                                chat1 = Arrays.asList(llmresp, path.toFile().getAbsolutePath());
+                                //The key for storage is Project-name and the sys-millisec
+                                store.storeChat(selectedProject.getProjectDirectory().getName() + "-" + System.currentTimeMillis(), chat1, embedding1);
                             }
+                        } catch (Exception ex) {
+                            Exceptions.printStackTrace(ex);
                         }
-
-                        appendText("==== Completed the Indexing ====\n");
-                        appendText("Now your questions will be answered by looking at the project code. Also, regularly re-index for updated results.\n");
-                    } finally {
-                        // Complete the progress handle to stop the progress bar
-                        progressHandle.finish();
                     }
+
+                    appendText("==== Completed the Indexing ====\n");
+                    appendText("Now your questions will be answered by looking at the project code. Also, regularly re-index for updated results.\n");
+                } finally {
+                    // Complete the progress handle to stop the progress bar
+                    progressHandle.finish();
                 }
-            });
-    
-    }
-    
-    private void detectBugs(){
-        
-            Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
-            if (selectedProject == null) {
-                System.out.println("No project selected.");
-                return;
             }
+        });
 
-            System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
-
-            // Start a background task using RequestProcessor
-            RequestProcessor.getDefault().post(new Runnable() {
-                @Override
-                public void run() {
-                    // Initialize ProgressHandle
-                    ProgressHandle progressHandle = ProgressHandle.createHandle("Bug Detection Project: " + selectedProject.getProjectDirectory().getName());
-                    progressHandle.start();  // Start the progress bar
-
-                    try {
-                        // Get the file dependencies
-                        Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
-                        appendText("==== Detecting Bugs ====\n");
-
-                        int totalFiles = result.size();
-                        int currentFile = 0;
-
-                        for (String key : result.keySet()) {
-                            appendText("<code> "+key + "\n");
-                            progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
-                            currentFile++;
-
-                            Path path = Paths.get(key);
-                            try {
-                                String fileContent = Files.readString(path);
-                                String userInput = inputTextArea.getText();
-                                String selectedModel = (String) modelSelection.getSelectedItem();
-                                appendText(selectedModel + " is being used ... \n");
-
-                                String prompt = (userInput.isBlank() ? "List the possible bugs, algorithm, and memory related issues in code provided.\n "
-                                        + "Also provide the code snippet that has the bug.\n If code looks good, then appreciate the good work." : userInput) + fileContent;
-                                JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
-
-                                if (codeSummary != null) {
-                                    String llmresp=codeSummary.getString("response") ;
-                                    appendText(llmresp + "\n");
-                                }
-                            } catch (Exception ex) {
-                                Exceptions.printStackTrace(ex);
-                            }
-                        }
-
-                        appendText("==== Completed tasks for bug identifications ====\n");
-                        appendText("==== I can't raise bug in Github or JIRA yet ====\n");
-                       
-                    } finally {
-                        // Complete the progress handle to stop the progress bar
-                        progressHandle.finish();
-                    }
-                }
-            });
     }
-    
-    private void searchIndex(){
-          String userInput = inputTextArea.getText();
-                
-                if(!userInput.isBlank()){
-                 List<String> chat1 = Arrays.asList(userInput);
-                double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                List<ChatSimilarityResult> chats=store.findSimilarChats(embedding1, 0.4, 3);
-                chats.forEach(chatresult->{
-                    List<String> kvChats=store.getChat(chatresult.getChatId());
-                    kvChats.forEach(chat->{
-                        appendToOutputDocumentOllama(chat+"\n" );
-                    });
-                    
+
+    private void detectBugs() {
+
+        Project selectedProject = IDEHelper.selectProjectFromOpenProjects();
+        if (selectedProject == null) {
+            System.out.println("No project selected.");
+            return;
+        }
+
+        System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
+
+        // Start a background task using RequestProcessor
+        RequestProcessor.getDefault().post(new Runnable() {
+            @Override
+            public void run() {
+                // Initialize ProgressHandle
+                ProgressHandle progressHandle = ProgressHandle.createHandle("Bug Detection Project: " + selectedProject.getProjectDirectory().getName());
+                progressHandle.start();  // Start the progress bar
+
+                try {
+                    // Get the file dependencies
+                    Map<String, List<String>> result = scanJavaFiles(new File(selectedProject.getProjectDirectory().getPath()));
+                    appendText("==== Detecting Bugs ====\n");
+
+                    int totalFiles = result.size();
+                    int currentFile = 0;
+
+                    for (String key : result.keySet()) {
+                        appendText("<code> " + key + "\n");
+                        progressHandle.progress("Processing file: " + key, currentFile * 100 / totalFiles);
+                        currentFile++;
+
+                        Path path = Paths.get(key);
+                        try {
+                            String fileContent = Files.readString(path);
+                            String userInput = inputTextArea.getText();
+                            String selectedModel = (String) modelSelection.getSelectedItem();
+                            appendText(selectedModel + " is being used ... \n");
+
+                            String prompt = (userInput.isBlank() ? "List the possible bugs, algorithm, and memory related issues in code provided.\n "
+                                    + "Also provide the code snippet that has the bug.\n If code looks good, then appreciate the good work.\n"
+                                    + "Depending on how critical bugs are add tags like <P0>, <P1>...etc at end of response, here P0 will be highest priority else tag <GOOD>" : userInput) + fileContent;
+                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+
+                            if (codeSummary != null) {
+                                String llmresp = codeSummary.getString("response");
+                                appendText(llmresp + "\n");
+                                //If P0 issues are found then create a task in task list
+                                if(llmresp.contains("P0")&& (!llmresp.contains("GOOD"))){
+                                    String refine="Fill in information in format in JSONObject format {  \n" +
+"  \"tags\": \"memory issue, algorithm issue, performance issue, UI issue, dependency issue, API issue, compatibility issue, configuration issue, data processing issue, security issue, scalability issue\"  \n" +
+"} => code review summary =>"+llmresp;
+                                    JSONObject codeSummaryTaskCreation = OllamaHelpers.callLLMGenerate(selectedModel, refine, true);
+                                    String title = codeSummaryTaskCreation.getString("response");
+                                     appendText(  "\n Coding task created -> "+title+"\n");
+                                     TaskManager.getInstance().addTask("P0 Bug",key);
+                                     refreshTaskTable(taskTableModel);
+                                }
+                            }
+                        } catch (Exception ex) {
+                            Exceptions.printStackTrace(ex);
+                        }
+                    }
+
+                    appendText("==== Completed tasks for bug identifications ====\n");
+                    appendText("==== I can't raise bug in Github or JIRA yet ====\n");
+
+                } finally {
+                    // Complete the progress handle to stop the progress bar
+                    progressHandle.finish();
+                }
+            }
+        });
+    }
+
+    private void searchIndex() {
+        String userInput = inputTextArea.getText();
+
+        if (!userInput.isBlank()) {
+            List<String> chat1 = Arrays.asList(userInput);
+            double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+            List<ChatSimilarityResult> chats = store.findSimilarChats(embedding1, 0.4, 3);
+            chats.forEach(chatresult -> {
+                List<String> kvChats = store.getChat(chatresult.getChatId());
+                kvChats.forEach(chat -> {
+                    appendToOutputDocumentOllama(chat + "\n");
                 });
-                } else {
-                    JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
-                }
+
+            });
+        } else {
+            JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
+        }
     }
 
 }

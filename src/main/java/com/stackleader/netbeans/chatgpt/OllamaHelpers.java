@@ -394,6 +394,38 @@ public class OllamaHelpers {
         return null;
 }
     
+    public static JSONObject callLLMGenerate(String model,String prompt,boolean jsonFormat) {
+    try {
+        HttpClient httpClient = HttpClient.newHttpClient();
+        // Build the request payload
+        JSONObject requestPayload = new JSONObject();
+        requestPayload.put("model", model);
+        requestPayload.put("prompt", prompt);
+        //requestPayload.put("system", systemPrompt);
+        requestPayload.put("format", jsonFormat ? "json" : "text");
+        requestPayload.put("stream", false); // Set to true for streaming
+
+        JSONObject options=new JSONObject();
+        options.put("num_ctx", 4096);
+
+        System.out.println("Request=>"+requestPayload.toString(1));
+        // Create the HTTP request
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(OLLAMA_EP+"/api/generate"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
+                .build();
+
+         // Send the request and get the response
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        
+        return new JSONObject(response);
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+        return null;
+}
+    
       public static String[] fetchModelNames()  {
           
         try {
@@ -725,5 +757,31 @@ public class OllamaHelpers {
             return Base64.getEncoder().encodeToString(imageBytes); // Encode the byte array to Base64
         }
     }
+    
+    ///Prompts
+    public static String CODE_REVIEW_FORMAT="{\n" +
+"  \"fileName\": \"MyClass.java\",\n" +
+"  \"filePath\": \"src/main/java/com/example/MyClass.java\",\n" +
+"  \"issues\": [\n" +
+"    {\n" +
+"      \"lineNumber\": 23,\n" +
+"      \"severity\": \"high\",\n" +
+"      \"description\": \"Null pointer exception risk. Add a null check for 'object'.\",\n" +
+"      \"tags\": [\"null-check\", \"exception-handling\"]\n" +
+"    },\n" +
+"    {\n" +
+"      \"lineNumber\": 45,\n" +
+"      \"severity\": \"medium\",\n" +
+"      \"description\": \"Magic number used. Replace with a constant.\",\n" +
+"      \"tags\": [\"magic-number\", \"best-practices\"]\n" +
+"    }\n" +
+"  ],\n" +
+"  \"summary\": {\n" +
+"    \"totalIssues\": 2,\n" +
+"    \"highSeverity\": 1,\n" +
+"    \"mediumSeverity\": 1,\n" +
+"    \"lowSeverity\": 0\n" +
+"  }\n" +
+"}";
     
 }
