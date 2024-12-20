@@ -394,37 +394,6 @@ public class OllamaHelpers {
         return null;
 }
     
-    public static JSONObject callLLMGenerate(String model,String prompt,boolean jsonFormat) {
-    try {
-        HttpClient httpClient = HttpClient.newHttpClient();
-        // Build the request payload
-        JSONObject requestPayload = new JSONObject();
-        requestPayload.put("model", model);
-        requestPayload.put("prompt", prompt);
-        //requestPayload.put("system", systemPrompt);
-        requestPayload.put("format", jsonFormat ? "json" : "text");
-        requestPayload.put("stream", false); // Set to true for streaming
-
-        JSONObject options=new JSONObject();
-        options.put("num_ctx", 4096);
-
-        System.out.println("Request=>"+requestPayload.toString(1));
-        // Create the HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(OLLAMA_EP+"/api/generate"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
-                .build();
-
-         // Send the request and get the response
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        return new JSONObject(response);
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-        return null;
-}
     
       public static String[] fetchModelNames()  {
           
@@ -537,7 +506,7 @@ public class OllamaHelpers {
      * @param model The model to use.
      * @param prompt The prompt to send.
      */
-    public static JSONObject makeNonStreamedRequest(  String model, String prompt) throws Exception {
+    public static JSONObject makeNonStreamedRequest(  String model, String prompt, boolean jsonFormat) throws Exception {
         URL url = new URL(OLLAMA_EP+"/api/generate");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
@@ -549,6 +518,7 @@ public class OllamaHelpers {
         jsonObject.put("model", model);
         jsonObject.put("prompt", prompt);
         jsonObject.put("stream", false);
+        jsonObject.put("format", jsonFormat ? "json" : "text");
 
         // Send JSON payload
         try (OutputStream os = connection.getOutputStream()) {
@@ -642,7 +612,7 @@ public class OllamaHelpers {
             // Make HTTP POST request and parse the response
             makePostRequest( payload,null);
             
-            makeNonStreamedRequest(  "llama3.2", "Why is the sky blue?");
+            makeNonStreamedRequest("llama3.2", "Why is the sky blue?", false);
         } catch (Exception e) {
             e.printStackTrace();
         }

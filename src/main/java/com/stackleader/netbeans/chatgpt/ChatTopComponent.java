@@ -1101,7 +1101,7 @@ public class ChatTopComponent extends TopComponent {
                             appendText(selectedModel + " is being used ... \n");
 
                             String prompt = (userInput.isBlank() ? "Describe the file content given below in just one sentence.\n" : userInput) + fileContent;
-                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
+                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt, false);
 
                             if (codeSummary != null) {
                                 String llmresp = codeSummary.getString("response");
@@ -1167,26 +1167,29 @@ public class ChatTopComponent extends TopComponent {
                             String selectedModel = (String) modelSelection.getSelectedItem();
                             appendText(selectedModel + " is being used ... \n");
 
-                            String prompt = (userInput.isBlank() ? "List the possible bugs, algorithm, and memory related issues in code provided.\n "
-                                    + "Also provide the code snippet that has the bug.\n If code looks good, then appreciate the good work.\n"
-                                    + "Depending on how critical bugs are add tags like <P0>, <P1>...etc at end of response, here P0 will be highest priority else tag <GOOD>" : userInput) + fileContent;
-                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt);
-
-                            if (codeSummary != null) {
-                                String llmresp = codeSummary.getString("response");
-                                appendText(llmresp + "\n");
-                                //If P0 issues are found then create a task in task list
-                                if(llmresp.contains("P0")&& (!llmresp.contains("GOOD"))){
-                                    String refine="Fill in information in format in JSONObject format {  \n" +
-"  \"tags\": \"memory issue, algorithm issue, performance issue, UI issue, dependency issue, API issue, compatibility issue, configuration issue, data processing issue, security issue, scalability issue\"  \n" +
-"} => code review summary =>"+llmresp;
-                                    JSONObject codeSummaryTaskCreation = OllamaHelpers.callLLMGenerate(selectedModel, refine, true);
-                                    String title = codeSummaryTaskCreation.getString("response");
-                                     appendText(  "\n Coding task created -> "+title+"\n");
-                                     TaskManager.getInstance().addTask("P0 Bug",key);
-                                     refreshTaskTable(taskTableModel);
-                                }
-                            }
+                            String prompt = (userInput.isBlank() ? "Review the source code and determine the important issues.\n" +
+"Then label the issue under various types. Output should be in JSON\n.Schema: \\n"+OllamaHelpers.CODE_REVIEW_FORMAT : userInput) + fileContent;
+                            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
+                             appendText(codeSummary.toString() + "\n");
+                             TaskManager.getInstance().parseTasksFromJson(codeSummary.getString("response"));
+                             refreshTaskTable(taskTableModel);
+                            
+                           
+//                            if (codeSummary != null) {
+//                                String llmresp = codeSummary.getString("response");
+//                                appendText(llmresp + "\n");
+//                                //If P0 issues are found then create a task in task list
+//                                if(llmresp.contains("P0")&& (!llmresp.contains("GOOD"))){
+//                                    String refine="Fill in information in format in JSONObject format {  \n" +
+//"  \"tags\": \"memory issue, algorithm issue, performance issue, UI issue, dependency issue, API issue, compatibility issue, configuration issue, data processing issue, security issue, scalability issue\"  \n" +
+//"} => code review summary =>"+llmresp;
+//                                    JSONObject codeSummaryTaskCreation = OllamaHelpers.makeNonStreamedRequest(selectedModel, refine, true);
+//                                    String title = codeSummaryTaskCreation.getString("response");
+//                                     appendText(  "\n Coding task created -> "+title+"\n");
+//                                     TaskManager.getInstance().addTask("P0 Bug",key);
+//                                     refreshTaskTable(taskTableModel);
+//                                }
+//                            }
                         } catch (Exception ex) {
                             Exceptions.printStackTrace(ex);
                         }
