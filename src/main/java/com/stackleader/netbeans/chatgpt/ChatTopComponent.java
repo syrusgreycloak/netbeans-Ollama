@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -155,9 +156,13 @@ public class ChatTopComponent extends TopComponent {
         // Continue with plugin initialization
         System.out.println("Plugin initialized with home directory: " + pluginHomeDir);
         
+        //Initiate Vector Store
+        store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db");
+
+        
         //Task List
         //Task Table
-        String[] columnNames = {"Task", "Description","Code File", "Status"};
+        String[] columnNames = {"Task", "Description","Code File","lineNumber","severity","tags", "Status"};//description, filePath, lineNumber, severity, tags, TaskStatus.PENDING
         taskTableModel = new DefaultTableModel(columnNames, 0);
 
         addComponentsToFrame();
@@ -166,9 +171,7 @@ public class ChatTopComponent extends TopComponent {
         //Function calls
         IDEHelper.registerFunction(new FilesList());
 
-        //Initiate Vector Store
-        store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db");
-
+        
         // String currentDirectory = System.getProperty("user.dir");
         appendText("Plugin working directory: " + pluginHomeDir + "\n");
         appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  " + pluginHomeDir + "\n");
@@ -360,30 +363,30 @@ public class ChatTopComponent extends TopComponent {
 
         // Buttons Panel
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton addTaskButton = new JButton("Add Task");
+        //JButton addTaskButton = new JButton("Add Task");
         JButton removeTaskButton = new JButton("Remove Task");
         JButton verifyTasksButton = new JButton("Verify Tasks");
 
-        buttonsPanel.add(addTaskButton);
+        //buttonsPanel.add(addTaskButton);
         buttonsPanel.add(removeTaskButton);
         buttonsPanel.add(verifyTasksButton);
         taskListPanel.add(buttonsPanel, BorderLayout.SOUTH);
 
         // Add Task Button Action
-        addTaskButton.addActionListener(e -> {
-            String taskText = JOptionPane.showInputDialog(taskListPanel, "Enter Task Description:");
-            if (taskText != null && !taskText.trim().isEmpty()) {
-                TaskManager.getInstance().addTask(taskText.trim(),"NA");
-                refreshTaskTable(taskTableModel);
-            }
-        });
+//        addTaskButton.addActionListener(e -> {
+//            String taskText = JOptionPane.showInputDialog(taskListPanel, "Enter Task Description:");
+//            if (taskText != null && !taskText.trim().isEmpty()) {
+//                TaskManager.getInstance(store).addTask(taskText.trim(),"NA");
+//                refreshTaskTable(taskTableModel);
+//            }
+//        });
 
         // Remove Task Button Action
         removeTaskButton.addActionListener(e -> {
             int selectedRow = taskTable.getSelectedRow();
             if (selectedRow != -1) {
                 int taskId = (int) taskTable.getValueAt(selectedRow, 0); // Assuming the task ID is in the first column
-                TaskManager.getInstance().removeTask(taskId);
+                TaskManager.getInstance(store).removeTask(taskId);
                 refreshTaskTable(taskTableModel);
             } else {
                 JOptionPane.showMessageDialog(taskListPanel, "Please select a task to remove.");
@@ -392,7 +395,7 @@ public class ChatTopComponent extends TopComponent {
 
         // Verify Tasks Button Action
         verifyTasksButton.addActionListener(e -> {
-            TaskManager.getInstance().verifyTaskCompletion();
+            TaskManager.getInstance(store).verifyTaskCompletion();
             refreshTaskTable(taskTableModel);
         });
 
@@ -406,8 +409,9 @@ public class ChatTopComponent extends TopComponent {
         taskTableModel.setRowCount(0); // Clear existing rows
 
         // Populate with current tasks
-        TaskManager.getInstance().getAllTasks().forEach(task -> {
-            taskTableModel.addRow(new Object[]{task.getId(), task.getDescription(),task.getCodeFile(), task.getStatus()});
+        TaskManager.getInstance(store).getAllTasks().forEach(task -> {
+            // {"Task", "Description","Code File","lineNumber","severity","tags", "Status"}
+            taskTableModel.addRow(new Object[]{task.getId(), task.getDescription(),task.getCodeFile(),task.getLineNumber(), task.getSeverity(), String.join(", ", task.getTags()), task.getStatus()});
         });
     }
 
@@ -1171,7 +1175,8 @@ public class ChatTopComponent extends TopComponent {
 "Then label the issue under various types. Output should be in JSON\n.Schema: \\n"+OllamaHelpers.CODE_REVIEW_FORMAT : userInput) + fileContent;
                             JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
                              appendText(codeSummary.toString() + "\n");
-                             TaskManager.getInstance().parseTasksFromJson(codeSummary.getString("response"));
+                             LinkedList<Task> taskList=TaskManager.getInstance(store).parseTasksFromJson(codeSummary.getString("response"));
+                             store.addTasks(taskList);
                              refreshTaskTable(taskTableModel);
                             
                            

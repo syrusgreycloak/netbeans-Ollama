@@ -18,7 +18,9 @@ package com.redbus.store;
  *
  * @author manoj.kumar
  */
+import com.stackleader.netbeans.chatgpt.Task;
 import java.util.ArrayList;
+import java.util.Collection;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
@@ -46,25 +48,25 @@ import java.util.Map;
  * @author manoj.kumar
  */
 public class MapDBVectorStore implements VectorStore {
+
     private final DB db;
     private final ConcurrentNavigableMap<String, Vector> vectorMap;
     private final ConcurrentNavigableMap<String, List<String>> chatMap;  // Map to store chats
     private final ConcurrentNavigableMap<String, double[]> chatEmbeddingsMap;  // Map to store chat embeddings
-
-
+    private final ConcurrentNavigableMap<String, Task> taskMap;  // Map to store tasks
 
     public MapDBVectorStore(String dbFilePath) {
         db = DBMaker.fileDB(dbFilePath).fileChannelEnable().transactionEnable()
-                    .fileMmapEnable()
-                    .fileMmapEnableIfSupported()
-                    .fileMmapPreclearDisable()
-                    .cleanerHackEnable()
-                    .make();
+                .fileMmapEnable()
+                .fileMmapEnableIfSupported()
+                .fileMmapPreclearDisable()
+                .cleanerHackEnable()
+                .make();
         vectorMap = db.treeMap("vectors", Serializer.STRING, new VectorGroupSerializer()).createOrOpen();
-              chatMap = db.treeMap("chats", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Serializer for chat list
-                   chatEmbeddingsMap = db.treeMap("chat_embeddings", Serializer.STRING, Serializer.DOUBLE_ARRAY).createOrOpen(); // Store embeddings
-    
-  
+        chatMap = db.treeMap("chats", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Serializer for chat list
+        chatEmbeddingsMap = db.treeMap("chat_embeddings", Serializer.STRING, Serializer.DOUBLE_ARRAY).createOrOpen(); // Store embeddings
+        taskMap = db.treeMap("tasks", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Store tasks
+
     }
 
     @Override
@@ -90,7 +92,7 @@ public class MapDBVectorStore implements VectorStore {
         db.commit();
     }
 
-   /**
+    /**
      * Calculates the cosine similarity between two vectors.
      *
      * @param vectorA the first vector
@@ -114,7 +116,7 @@ public class MapDBVectorStore implements VectorStore {
      * above the given threshold with the query vector.
      *
      * @param queryVector the query vector
-     * @param threshold   the similarity threshold
+     * @param threshold the similarity threshold
      * @return a list of vectors that have a similarity above the threshold
      */
     public List<Vector> searchVectors(double[] queryVector, double threshold) {
@@ -128,14 +130,16 @@ public class MapDBVectorStore implements VectorStore {
         }
         return result;
     }
-    
-     /**
-     * Searches for the vector in the vector store that has the highest cosine similarity
-     * with the query vector, provided the similarity is above the given threshold.
+
+    /**
+     * Searches for the vector in the vector store that has the highest cosine
+     * similarity with the query vector, provided the similarity is above the
+     * given threshold.
      *
      * @param queryVector the query vector
-     * @param threshold   the similarity threshold
-     * @return the vector with the highest similarity above the threshold, or null if none found
+     * @param threshold the similarity threshold
+     * @return the vector with the highest similarity above the threshold, or
+     * null if none found
      */
     public Vector searchTopScoringVector(double[] queryVector, double threshold) {
         Vector topScoringVector = null;
@@ -155,14 +159,15 @@ public class MapDBVectorStore implements VectorStore {
 
         return topScoringVector;
     }
-    
+
     /**
-     * Searches for the top N vectors in the vector store that have the highest cosine similarity
-     * with the query vector, provided the similarity is above the given threshold.
+     * Searches for the top N vectors in the vector store that have the highest
+     * cosine similarity with the query vector, provided the similarity is above
+     * the given threshold.
      *
      * @param queryVector the query vector
-     * @param threshold   the similarity threshold
-     * @param topN        the number of top matching vectors to return
+     * @param threshold the similarity threshold
+     * @param topN the number of top matching vectors to return
      * @return a list of the top N vectors with similarity above the threshold
      */
     public List<Vector> searchTopNVectors(double[] queryVector, double threshold, int topN) {
@@ -185,14 +190,12 @@ public class MapDBVectorStore implements VectorStore {
         result.sort((v1, v2) -> Double.compare((double) v2.getMetadata().get("score"), (double) v1.getMetadata().get("score")));
         return result;
     }
-    
-    
-     // Chat related methods
 
     // Chat related methods
-
+    // Chat related methods
     /**
      * Stores a new chat with a unique chatId and its embedding.
+     *
      * @param chatId the unique identifier of the chat.
      * @param messages the list of chat messages.
      * @param embedding the embedding array of the chat content.
@@ -205,8 +208,10 @@ public class MapDBVectorStore implements VectorStore {
 
     /**
      * Retrieves a chat by its unique chatId.
+     *
      * @param chatId the unique identifier of the chat.
-     * @return the list of messages in the chat, or null if the chat doesn't exist.
+     * @return the list of messages in the chat, or null if the chat doesn't
+     * exist.
      */
     public List<String> getChat(String chatId) {
         return chatMap.get(chatId);
@@ -214,6 +219,7 @@ public class MapDBVectorStore implements VectorStore {
 
     /**
      * Updates an existing chat by appending new messages.
+     *
      * @param chatId the unique identifier of the chat.
      * @param newMessages the new messages to add to the chat.
      */
@@ -228,10 +234,12 @@ public class MapDBVectorStore implements VectorStore {
 
     /**
      * Finds similar chats based on cosine similarity between embeddings.
+     *
      * @param queryEmbedding the embedding of the query chat.
      * @param threshold the minimum cosine similarity score to consider.
      * @param topN the number of most similar chats to return.
-     * @return a list of chat IDs and their similarity scores, sorted by highest similarity.
+     * @return a list of chat IDs and their similarity scores, sorted by highest
+     * similarity.
      */
     public List<ChatSimilarityResult> findSimilarChats(double[] queryEmbedding, double threshold, int topN) {
         PriorityQueue<ChatSimilarityResult> topChats = new PriorityQueue<>(topN, Comparator.comparingDouble(ChatSimilarityResult::getScore));
@@ -255,10 +263,61 @@ public class MapDBVectorStore implements VectorStore {
         result.sort((c1, c2) -> Double.compare(c2.getScore(), c1.getScore()));  // Sort by similarity descending
         return result;
     }
-    
-    
+
     public void close() {
         db.close();
+    }
+
+    //The tasks
+    // Add a new task
+    public synchronized void addTask(String taskId, Task task) {
+        taskMap.put(taskId, task);
+        db.commit();
+    }
+    
+    // Add a list of tasks
+    public synchronized void addTasks(Map<String, Task> tasks) {
+        taskMap.putAll(tasks);
+        db.commit();
+    }
+    
+     // Add a list of tasks with auto-generated IDs
+    public synchronized void addTasks(Collection<Task> taskList) {
+        int idCounter = taskMap.size();
+        for (Task task : taskList) {
+            String taskId = "task" + (++idCounter);
+            taskMap.put(taskId, task);
+        }
+        db.commit();
+    }
+
+    // Update an existing task
+    public synchronized void updateTask(String taskId, Task updatedTask) {
+        if (taskMap.containsKey(taskId)) {
+            taskMap.put(taskId, updatedTask);
+            db.commit();
+        } else {
+            throw new IllegalArgumentException("Task with ID " + taskId + " does not exist.");
+        }
+    }
+
+    // Remove a task
+    public synchronized void removeTask(String taskId) {
+        if (taskMap.containsKey(taskId)) {
+            taskMap.remove(taskId);
+            db.commit();
+        } else {
+            throw new IllegalArgumentException("Task with ID " + taskId + " does not exist.");
+        }
+    }
+    
+    public List<Task> getAllTasks() {
+        return new ArrayList<>(taskMap.values());
+    }
+
+    // Retrieve a task
+    public Task getTask(String taskId) {
+        return taskMap.get(taskId);
     }
 }
 

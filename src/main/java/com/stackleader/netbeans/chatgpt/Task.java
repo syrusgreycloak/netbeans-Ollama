@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import java.util.List;
 
-public class Task {
+public class Task implements java.io.Serializable  {
     private int lineNumber;
     private String severity;
     private String description;
@@ -43,6 +43,8 @@ public class Task {
         this.description = description;
         this.status = taskStatus;
         this.codeFile=filePath;
+        this.lineNumber=lineNumber;
+        this.severity=severity;
          this.tags = tags;
     }
 
