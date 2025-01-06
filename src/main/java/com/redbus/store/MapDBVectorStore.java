@@ -285,8 +285,7 @@ public class MapDBVectorStore implements VectorStore {
     public synchronized void addTasks(Collection<Task> taskList) {
         int idCounter = taskMap.size();
         for (Task task : taskList) {
-            String taskId = "task" + (++idCounter);
-            taskMap.put(taskId, task);
+            taskMap.put(String.valueOf(task.getId()), task);
         }
         db.commit();
     }
@@ -314,6 +313,12 @@ public class MapDBVectorStore implements VectorStore {
     public List<Task> getAllTasks() {
         return new ArrayList<>(taskMap.values());
     }
+
+    public ConcurrentNavigableMap<String, Task> getTaskMap() {
+        return taskMap;
+    }
+ 
+
 
     // Retrieve a task
     public Task getTask(String taskId) {

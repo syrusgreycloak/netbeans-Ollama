@@ -365,7 +365,7 @@ public class ChatTopComponent extends TopComponent {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         //JButton addTaskButton = new JButton("Add Task");
         JButton removeTaskButton = new JButton("Remove Task");
-        JButton verifyTasksButton = new JButton("Verify Tasks");
+        JButton verifyTasksButton = new JButton("Open File");
 
         //buttonsPanel.add(addTaskButton);
         buttonsPanel.add(removeTaskButton);
@@ -395,8 +395,17 @@ public class ChatTopComponent extends TopComponent {
 
         // Verify Tasks Button Action
         verifyTasksButton.addActionListener(e -> {
+            int selectedRow = taskTable.getSelectedRow();
+            if (selectedRow != -1) {
+                int taskId = (int) taskTable.getValueAt(selectedRow, 0); // Assuming the task ID is in the first column
+               
+            Task task=TaskManager.getInstance(store).getTask(taskId);
             TaskManager.getInstance(store).verifyTaskCompletion();
             refreshTaskTable(taskTableModel);
+        
+            HyperlinkDemo.openSourceCode(task.getCodeFile(), task.getLineNumber()>0?task.getLineNumber():1);
+            
+            }
         });
 
         // Initial Population of Task Table
@@ -1143,6 +1152,7 @@ public class ChatTopComponent extends TopComponent {
 
         System.out.println("Selected project: " + selectedProject.getProjectDirectory().getName());
 
+        if(taskTableModel.getRowCount()==0)
         // Start a background task using RequestProcessor
         RequestProcessor.getDefault().post(new Runnable() {
             @Override
@@ -1174,10 +1184,14 @@ public class ChatTopComponent extends TopComponent {
                             String prompt = (userInput.isBlank() ? "Review the source code and determine the important issues.\n" +
 "Then label the issue under various types. Output should be in JSON\n.Schema: \\n"+OllamaHelpers.CODE_REVIEW_FORMAT : userInput) + fileContent;
                             JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
-                             appendText(codeSummary.toString() + "\n");
-                             LinkedList<Task> taskList=TaskManager.getInstance(store).parseTasksFromJson(codeSummary.getString("response"));
+                           //  appendText(codeSummary.toString() + "\n");
+                            JSONObject jsonObject = new JSONObject(codeSummary.getString("response"));
+                            //Correct filePath
+                            jsonObject.put("filePath", path.toFile().getAbsolutePath());
+                             LinkedList<Task> taskList=TaskManager.getInstance(store).parseTasksFromJson(jsonObject);
                              store.addTasks(taskList);
                              refreshTaskTable(taskTableModel);
+                             appendText((taskList.size()>0?taskList.size():"NO ") + " Task(s) added in 'Task List' tab\n");
                             
                            
 //                            if (codeSummary != null) {
@@ -1209,6 +1223,8 @@ public class ChatTopComponent extends TopComponent {
                 }
             }
         });
+        else
+            appendText("'Task List' is not empty. New tasks are added when previous ones are removed.\n");
     }
 
     private void searchIndex() {

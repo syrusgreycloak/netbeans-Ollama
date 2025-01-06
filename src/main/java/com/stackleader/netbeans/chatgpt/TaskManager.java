@@ -70,6 +70,12 @@ public class TaskManager {
         taskStore.removeTask(String.valueOf(taskId));
         
     }
+    
+     public synchronized Task getTask(int taskId) {
+        //.removeIf(task -> task.getId() == taskId);
+        return taskStore.getTask(String.valueOf(taskId));
+        
+    }
 
     // Search tasks by description (case-insensitive)
     public List<Task> searchTasks(String keyword) {
@@ -101,8 +107,8 @@ public class TaskManager {
     }
 
     // Parse tasks from a JSON string and add them to the task list
-    public synchronized LinkedList<Task> parseTasksFromJson(String jsonString) {
-        JSONObject jsonObject = new JSONObject(jsonString);
+    public synchronized LinkedList<Task> parseTasksFromJson(JSONObject jsonObject) {
+       // JSONObject jsonObject = new JSONObject(jsonString);
         
         JSONArray issuesArray =jsonObject.has("issues")? jsonObject.getJSONArray("issues"):new JSONArray();
         
@@ -111,7 +117,7 @@ public class TaskManager {
         for (int i = 0; i < issuesArray.length(); i++) {
             JSONObject issue = issuesArray.getJSONObject(i);
 
-            int lineNumber =-1 ;
+            int lineNumber =-1 ;//To be implemented properly. 
             try{
                 lineNumber=issue.getInt("lineNumber");
             }catch (Exception ex){}

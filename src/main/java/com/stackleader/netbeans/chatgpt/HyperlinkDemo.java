@@ -61,7 +61,7 @@ public class HyperlinkDemo {
      * @param relativeFilePath The relative path to the source file in the project.
      * @param lineNumber       The line number to navigate to.
      */
-    private static void openSourceCode(String relativeFilePath, int lineNumber) {
+    public static void openSourceCode(String relativeFilePath, int lineNumber) {
         try {
             // Resolve the file object using NetBeans APIs
             File file = new File(relativeFilePath);
