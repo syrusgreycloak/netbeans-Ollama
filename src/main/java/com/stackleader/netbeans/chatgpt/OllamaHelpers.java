@@ -518,7 +518,7 @@ public class OllamaHelpers {
         jsonObject.put("model", model);
         jsonObject.put("prompt", prompt);
         jsonObject.put("stream", false);
-        jsonObject.put("format", jsonFormat ? "json" : "text");
+        if(jsonFormat)jsonObject.put("format",   "json" );
 
         // Send JSON payload
         try (OutputStream os = connection.getOutputStream()) {
@@ -607,12 +607,12 @@ public class OllamaHelpers {
         try {
             // Define the endpoint URL and JSON payload
             String url = "http://localhost:11434/api/generate";
-            String payload = "{\"model\": \"llama3.2\", \"prompt\": \"Why is the sky blue?\"}";
+            String payload = "{\"model\": \"llama3.2:1b\", \"prompt\": \"Why is the sky blue?\"}";
 
             // Make HTTP POST request and parse the response
             makePostRequest( payload,null);
             
-            makeNonStreamedRequest("llama3.2", "Why is the sky blue?", false);
+            makeNonStreamedRequest("llama3.2:1b", "Why is the sky blue?", false);
         } catch (Exception e) {
             e.printStackTrace();
         }

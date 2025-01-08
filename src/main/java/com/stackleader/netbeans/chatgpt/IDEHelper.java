@@ -19,6 +19,13 @@ import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Mutex;
 
+import javax.swing.*;
+import javax.swing.event.*;
+import java.awt.*;
+import java.awt.event.AdjustmentListener;
+import org.fife.ui.rtextarea.*;
+import org.fife.ui.rsyntaxtextarea.*;
+
 /**
  *
  * @author manoj.kumar
@@ -200,6 +207,88 @@ public class IDEHelper {
             return null;
         }
     }
+    
+    
+    
+    //Visuals
+    
+    public static JSplitPane createCodeComparisonPane(String code1, String code2, String syntaxStyle) {
+        // Create RSyntaxTextAreas for both panels
+        RSyntaxTextArea textArea1 = createSyntaxTextArea(syntaxStyle);
+        RSyntaxTextArea textArea2 = createSyntaxTextArea(syntaxStyle);
+
+        // Set the code content
+        textArea1.setText(code1);
+        textArea2.setText(code2);
+
+        // Create scroll panes for the text areas
+        RTextScrollPane scrollPane1 = new RTextScrollPane(textArea1);
+        RTextScrollPane scrollPane2 = new RTextScrollPane(textArea2);
+
+        // Synchronize scrolling
+        synchronizeScrollPanes(scrollPane1.getVerticalScrollBar(), scrollPane2.getVerticalScrollBar());
+
+        // Create and return a split pane to hold the two scroll panes
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane1, scrollPane2);
+        splitPane.setDividerLocation(600); // Set initial divider position
+        return splitPane;
+    }
+
+    private static RSyntaxTextArea createSyntaxTextArea(String syntaxStyle) {
+        RSyntaxTextArea textArea = new RSyntaxTextArea(30,120);
+        textArea.setSyntaxEditingStyle(syntaxStyle);
+        textArea.setCodeFoldingEnabled(true);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        return textArea;
+    }
+
+    private static void synchronizeScrollPanes(JScrollBar bar1, JScrollBar bar2) {
+        AdjustmentListener listener = e -> {
+            JScrollBar source = (JScrollBar) e.getSource();
+            JScrollBar target = (source == bar1) ? bar2 : bar1;
+            target.setValue(source.getValue());
+        };
+
+        bar1.addAdjustmentListener(listener);
+        bar2.addAdjustmentListener(listener);
+    }
+    
+     public static JDialog createCodeComparisonDialog( JFrame dummyParent, String code1, String code2, String syntaxStyle) {
+        // Create a modal dialog
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(dummyParent), "Code Comparison", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setSize(1200, 800);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        // Create RSyntaxTextAreas for both panels
+        RSyntaxTextArea textArea1 = createSyntaxTextArea(syntaxStyle);
+        RSyntaxTextArea textArea2 = createSyntaxTextArea(syntaxStyle);
+
+        // Set the code content
+        textArea1.setText(code1);
+        textArea2.setText(code2);
+
+        // Create scroll panes for the text areas
+        RTextScrollPane scrollPane1 = new RTextScrollPane(textArea1);
+        RTextScrollPane scrollPane2 = new RTextScrollPane(textArea2);
+
+        // Synchronize scrolling
+        synchronizeScrollPanes(scrollPane1.getVerticalScrollBar(), scrollPane2.getVerticalScrollBar());
+
+        // Create and add a split pane to hold the two scroll panes
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane1, scrollPane2);
+        splitPane.setDividerLocation(600); // Set initial divider position
+        dialog.add(splitPane, BorderLayout.CENTER);
+
+        // Add an OK button to close the dialog
+        JPanel buttonPanel = new JPanel();
+        JButton okButton = new JButton("OK");
+        okButton.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(okButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        return dialog;
+    }
 
 }
 
@@ -262,4 +351,6 @@ class FilesList implements FunctionHandler {
 
         return output.toString();
     }
+    
+    
 }

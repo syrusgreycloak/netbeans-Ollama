@@ -11,5 +11,7 @@ package com.stackleader.netbeans.chatgpt;
 enum TaskStatus {
     PENDING,
     COMPLETED,
-    IN_PROGRESS
+    IN_PROGRESS,
+    FAILED,
+    INVALID,
 }

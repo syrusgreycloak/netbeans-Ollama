@@ -9,6 +9,15 @@ package com.stackleader.netbeans.chatgpt;
  * @author manoj.kumar
  */
 import com.redbus.store.MapDBVectorStore;
+
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -16,6 +25,15 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.openide.util.Exceptions;
 
 public class TaskManager {
     private static TaskManager instance;
@@ -137,4 +155,198 @@ public class TaskManager {
         
         return taskList;
     }
+ 
+    public void processTasks(MapDBVectorStore taskStore, String selectedModel) {
+
+        TaskManager taskManager = TaskManager.getInstance(taskStore);
+
+// Fetch tasks
+        List<Task> pendingTasks = taskManager.getAllTasks();
+
+        for (Task task : pendingTasks) {
+            try {
+                // Verify bug
+                if (verifyBug(task,selectedModel)) {
+                    String fix = suggestFix(task,selectedModel);
+
+                    // Apply fix and compile
+                    applyCodeChange(task.getCodeFile(), fix);
+                    if (compileCode(task.getCodeFile())) {
+
+                        // Add and run test cases
+                        String testCode = generateTestCase(task,selectedModel);
+                        String testFilePath = task.getCodeFile().replace(".java", "Test.java"); //Find a better location fo this
+                        addTestCase(testFilePath, testCode);
+                        if (runTests(testFilePath)) {
+                            taskManager.updateTaskStatus(task.getId(), TaskStatus.COMPLETED);
+                        } else {
+                            throw new RuntimeException("Tests failed");
+                        }
+                        
+                    } else {
+                        throw new RuntimeException("Compilation failed");
+                    }
+                } else {
+                    // taskManager.updateTaskStatus(task.getId(), TaskStatus.INVALID);
+                    task.setStatus(TaskStatus.INVALID);
+                    //Also add it...
+                }
+            } catch (Exception e) {
+                // taskManager.updateTaskStatus(task.getId(), TaskStatus.FAILED);
+                task.setStatus(TaskStatus.FAILED);
+            }
+        }
+    }
+
+    public boolean runTests(String testFilePath) {
+        try {
+           // org.junit.runner.JUnitCore.runClasses(Class.forName(testFilePath));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public void addTestCase(String testFilePath, String testCode) throws IOException {
+        Path path = Paths.get(testFilePath);
+        Files.writeString(path, testCode, StandardOpenOption.CREATE_NEW);
+    }
+
+    public String generateTestCase(Task task, String selectedModel) {
+        try {
+            String fileContent = Files.readString(Paths.get(task.getCodeFile()));
+            String codeSnippet = fileContent;
+            
+            String testPrompt = "Generate a JUnit test case for the following code snippet:\n" + codeSnippet;
+            
+            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, testPrompt,false);
+            
+            String aiResponse=codeSummary.getString("response");
+            
+            return aiResponse;
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return null;
+    }
+
+    public boolean compileCode(String filePath) {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        int result = compiler.run(null, null, null, filePath);
+        return result == 0; // 0 indicates success
+    }
+
+    public void applyCodeChange(String filePath, String updatedCode)  {
+        try {
+            // Path path = Paths.get(filePath);
+            //Files.writeString(path, updatedCode, StandardOpenOption.TRUNCATE_EXISTING);
+            ///
+            String fileContent = Files.readString(Paths.get(filePath));
+            
+            String code1 = fileContent;
+            String code2 = updatedCode;
+            String language = updatedCode.split("\\r?\\n")[0];
+                updatedCode = updatedCode.substring(language.length());
+            //JFrame dummyParent = new JFrame(); // Parent for modal dialog (can be null)
+            //dummyParent.setVisible(true);
+            
+            //IDEHelper.createCodeComparisonDialog(dummyParent,  code1,  code2,  SyntaxConstants.SYNTAX_STYLE_JAVA);
+            
+            // Create custom buttons for the dialog
+            Object[] options = {"Copy", "Close"};
+            //SwingUtilities.invokeLater(() -> {
+            // Show the dialog with RSyntaxTextArea embedded
+            int result = JOptionPane.showOptionDialog(
+                    null, IDEHelper.createCodeComparisonPane(  code1,  updatedCode,  SyntaxConstants.SYNTAX_STYLE_JAVA), "Code Block Detected ",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null, options, options[0] );
+            //});
+        } catch (IOException ex) {
+            Exceptions.printStackTrace(ex);
+        } }
+
+    public String suggestFix(Task task, String selectedModel) {
+        try {
+            String fileContent = Files.readString(Paths.get(task.getCodeFile()));
+            String codeSnippet = fileContent;
+            String bugDescription = task.getDescription();
+            
+            
+            String fixPrompt = "Suggest a fix for the following bug in the given code snippet:\n"
+                    + "Bug Description: " + bugDescription + "\n"
+                    + "Code Snippet:\n" + codeSnippet;
+            
+            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, fixPrompt,false);
+            
+            String aiResponse=codeSummary.getString("response");
+            
+            return aiResponse;
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return null;
+    }
+
+    public boolean verifyBug(Task task, String selectedModel ) {
+        try {
+            String fileContent = Files.readString(Paths.get(task.getCodeFile()));
+            String codeSnippet = fileContent;
+            String bugDescription = task.getDescription();
+            
+            String verificationPrompt = "Respond in JSON Schema format {hasBug: 'true'\'false'}.\n Verify if the following bug is present in the given code snippet:\n"
+                    + "Bug Description: " + bugDescription + "\n"
+                    + "Code Snippet:\n" + codeSnippet;
+            
+            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, verificationPrompt,true);
+            
+            String aiResponse=codeSummary.getString("response");
+            JSONObject hasBug=new JSONObject(aiResponse);
+            
+            //String aiResponse = aiService.ask(verificationPrompt);
+            return hasBug.getBoolean("hasBug");//aiResponse.contains("Bug exists");
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return false;
+    }
+    
+  public static void main(String... args){
+      
+      //Say Hi to LLM
+       String verificationPrompt = "Say Hi!" ;
+            
+            JSONObject codeSummary;
+        try {
+            codeSummary = OllamaHelpers.makeNonStreamedRequest("llama3.2:1b", verificationPrompt,false);
+            // String aiResponse=codeSummary.getString("response");
+             System.out.println(codeSummary.toString(1));
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+            
+           
+      
+      // Create a JFileChooser instance
+        JFileChooser fileChooser = new JFileChooser();
+
+        // Set the title for the dialog
+        fileChooser.setDialogTitle("Select a File");
+
+        // Show the file chooser dialog
+        int userSelection = fileChooser.showOpenDialog(null);
+
+        // Process the user's selection
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            System.out.println("Selected File: " + selectedFile.getAbsolutePath());
+            
+            MapDBVectorStore store=new MapDBVectorStore(selectedFile.getAbsolutePath());
+            TaskManager.getInstance(store).processTasks(store, "llama3.2:1b");
+            
+        } else {
+            System.out.println("No file selected");
+        }
+      
+  }
 }
