@@ -32,9 +32,12 @@ A task is added, when clicked, it will detect possible bugs and other issues in 
 
 ![image](https://github.com/user-attachments/assets/56dc296a-b154-4544-840d-9d2781a525b8)
 
-It can also appreciate the good work :)
+For the detected potential issues, the code is suggested with a click of button:
+![image](https://github.com/user-attachments/assets/434c8718-7ffb-4d2b-a259-7d2bbc2fb5be)
 
-![Screenshot 2024-12-18 122833](https://github.com/user-attachments/assets/e89d8af6-8b0b-4c63-83cd-304c8ba9ee64)
+Some more operational options are added:
+![image](https://github.com/user-attachments/assets/da4a8a82-291f-4a8f-9d3f-736047f72a73)
+
 
 ### OpenAI Error Message
 
