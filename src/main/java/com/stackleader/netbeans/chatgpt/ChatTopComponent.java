@@ -3,6 +3,7 @@ package com.stackleader.netbeans.chatgpt;
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
 import com.redbus.store.PDFReaderUtils;
+import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
 import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.callLLMVision;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.convertImageToBase64;
@@ -364,10 +365,13 @@ public class ChatTopComponent extends TopComponent {
         // Buttons Panel
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         //JButton addTaskButton = new JButton("Add Task");
+        JButton removeAllTaskButton = new JButton("Purge All Task");
         JButton removeTaskButton = new JButton("Remove Task");
+        
         JButton verifyTasksButton = new JButton("Resolve");
 
         //buttonsPanel.add(addTaskButton);
+        buttonsPanel.add(removeAllTaskButton);
         buttonsPanel.add(removeTaskButton);
         buttonsPanel.add(verifyTasksButton);
         taskListPanel.add(buttonsPanel, BorderLayout.SOUTH);
@@ -392,6 +396,22 @@ public class ChatTopComponent extends TopComponent {
                 JOptionPane.showMessageDialog(taskListPanel, "Please select a task to remove.");
             }
         });
+   
+         
+         removeAllTaskButton.addActionListener(e -> {
+    if (taskTableModel.getRowCount() > 0) {
+        int result = JOptionPane.showConfirmDialog(taskListPanel, "Are you sure you want to remove all tasks?", "Warning", JOptionPane.YES_NO_OPTION);
+        if (result == JOptionPane.YES_OPTION) {
+            for (int i = taskTableModel.getRowCount() - 1; i >= 0; i--) {
+                int taskId = (int) taskTable.getValueAt(i, 0); // Assuming the task ID is in the first column
+                TaskManager.getInstance(store).removeTask(taskId);
+            }
+            refreshTaskTable(taskTableModel);
+        }
+    } else {
+        JOptionPane.showMessageDialog(taskListPanel, "There are no tasks to remove.");
+    }
+});
 
         // Verify Tasks Button Action
         verifyTasksButton.addActionListener(e -> {
@@ -950,12 +970,7 @@ public class ChatTopComponent extends TopComponent {
         });
     }
 
-    // Method to copy code to the system clipboard
-    private void copyToClipboard(String code) {
-        StringSelection stringSelection = new StringSelection(code);
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(stringSelection, null);
-    }
+ 
 
     // Method to determine syntax style based on language string
     private String getSyntaxStyle(String language) {

@@ -9,6 +9,7 @@ package com.stackleader.netbeans.chatgpt;
  * @author manoj.kumar
  */
 import com.redbus.store.MapDBVectorStore;
+import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -177,7 +178,7 @@ public class TaskManager {
                     String fix = suggestFix(task,selectedModel);
 
                     // Apply fix and compile
-                    applyCodeChange(task.getCodeFile(), fix);
+                    applyCodeChange(task.getCodeFile(),"("+task.getSeverity()+"@"+task.getLineNumber()+")"+task.getDescription(), fix);
                     if (compileCode(task.getCodeFile())) {
 
                         // Add and run test cases
@@ -194,6 +195,8 @@ public class TaskManager {
                         throw new RuntimeException("Compilation failed");
                     }
                 } else {
+                    
+                    JOptionPane.showMessageDialog(null, "("+task.getSeverity()+"@"+task.getLineNumber()+")"+task.getDescription(), "Not an issue", JOptionPane.CLOSED_OPTION);
                     // taskManager.updateTaskStatus(task.getId(), TaskStatus.INVALID);
                     task.setStatus(TaskStatus.INVALID);
                     //Also add it...
@@ -216,7 +219,7 @@ public class TaskManager {
 
     public void addTestCase(String testFilePath, String testCode) throws IOException {
         Path path = Paths.get(testFilePath);
-        Files.writeString(path, testCode, StandardOpenOption.CREATE_NEW);
+       // Files.writeString(path, testCode, StandardOpenOption.CREATE_NEW); //Yet to do it right.
     }
 
     public String generateTestCase(Task task, String selectedModel) {
@@ -243,7 +246,7 @@ public class TaskManager {
         return result == 0; // 0 indicates success
     }
 
-    public void applyCodeChange(String filePath, String updatedCode)  {
+    public void applyCodeChange(String filePath, String issue, String updatedCode)  {
         try {
             // Path path = Paths.get(filePath);
             //Files.writeString(path, updatedCode, StandardOpenOption.TRUNCATE_EXISTING);
@@ -264,10 +267,16 @@ public class TaskManager {
             //SwingUtilities.invokeLater(() -> {
             // Show the dialog with RSyntaxTextArea embedded
             int result = JOptionPane.showOptionDialog(
-                    null, IDEHelper.createCodeComparisonPane(  code1,  updatedCode,  SyntaxConstants.SYNTAX_STYLE_JAVA), "Code Block Detected ",
+                    null, IDEHelper.createCodeComparisonPane(  code1,  updatedCode,  SyntaxConstants.SYNTAX_STYLE_JAVA), "Issue:"+issue,
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.PLAIN_MESSAGE,
                     null, options, options[0] );
+            
+            // Handle the user's selection
+            if (result == JOptionPane.YES_OPTION) {
+                copyToClipboard(updatedCode);
+                JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
             //});
         } catch (IOException ex) {
             Exceptions.printStackTrace(ex);
@@ -311,7 +320,7 @@ public class TaskManager {
             JSONObject hasBug=new JSONObject(aiResponse);
             
             //String aiResponse = aiService.ask(verificationPrompt);
-            return hasBug.getBoolean("hasBug");//aiResponse.contains("Bug exists");
+            return hasBug.has("hasBug")?hasBug.getBoolean("hasBug"):false;//aiResponse.contains("Bug exists");
         } catch (Exception ex) {
             Exceptions.printStackTrace(ex);
         }

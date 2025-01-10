@@ -22,6 +22,8 @@ import org.openide.util.Mutex;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.AdjustmentListener;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -385,6 +387,13 @@ class FilesList implements FunctionHandler {
         return content.lines()
                 .map(line -> line.replaceFirst("^Line \\d+:\\s*", "")) // Regex to match and remove "Line N: "
                 .collect(Collectors.joining(System.lineSeparator()));
+    }
+        
+           // Method to copy code to the system clipboard
+    public static void copyToClipboard(String code) {
+        StringSelection stringSelection = new StringSelection(code);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(stringSelection, null);
     }
     
     
