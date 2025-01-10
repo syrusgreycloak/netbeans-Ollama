@@ -164,6 +164,13 @@ public class TaskManager {
         List<Task> pendingTasks = taskManager.getAllTasks();
 
         for (Task task : pendingTasks) {
+           processTasks(  task,  selectedModel);
+        }
+    }
+    
+     public void processTasks(Task task, String selectedModel) {
+
+  
             try {
                 // Verify bug
                 if (verifyBug(task,selectedModel)) {
@@ -178,7 +185,7 @@ public class TaskManager {
                         String testFilePath = task.getCodeFile().replace(".java", "Test.java"); //Find a better location fo this
                         addTestCase(testFilePath, testCode);
                         if (runTests(testFilePath)) {
-                            taskManager.updateTaskStatus(task.getId(), TaskStatus.COMPLETED);
+                           updateTaskStatus(task.getId(), TaskStatus.COMPLETED);
                         } else {
                             throw new RuntimeException("Tests failed");
                         }
@@ -195,7 +202,7 @@ public class TaskManager {
                 // taskManager.updateTaskStatus(task.getId(), TaskStatus.FAILED);
                 task.setStatus(TaskStatus.FAILED);
             }
-        }
+        
     }
 
     public boolean runTests(String testFilePath) {

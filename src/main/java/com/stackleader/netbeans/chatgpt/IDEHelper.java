@@ -23,6 +23,13 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.AdjustmentListener;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Collectors;
 import org.fife.ui.rtextarea.*;
 import org.fife.ui.rsyntaxtextarea.*;
 
@@ -257,7 +264,7 @@ public class IDEHelper {
      public static JDialog createCodeComparisonDialog( JFrame dummyParent, String code1, String code2, String syntaxStyle) {
         // Create a modal dialog
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(dummyParent), "Code Comparison", Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setSize(1200, 800);
+        dialog.setSize(1024, 800);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
         // Create RSyntaxTextAreas for both panels
@@ -288,6 +295,27 @@ public class IDEHelper {
         dialog.add(buttonPanel, BorderLayout.SOUTH);
 
         return dialog;
+    }
+     
+         public static String prefixLineNumbers(String inputFilePath) throws IOException {
+        Path inputPath = Paths.get(inputFilePath);
+
+        // Ensure the input file exists
+        if (!Files.exists(inputPath)) {
+            throw new FileNotFoundException("Input file not found: " + inputFilePath);
+        }
+
+        StringBuilder result = new StringBuilder();
+        try (BufferedReader reader = Files.newBufferedReader(inputPath)) {
+            String line;
+            int lineNumber = 1;
+
+            while ((line = reader.readLine()) != null) {
+                result.append("Line ").append(lineNumber).append(": ").append(line).append(System.lineSeparator());
+                lineNumber++;
+            }
+        }
+        return result.toString();
     }
 
 }
@@ -350,6 +378,13 @@ class FilesList implements FunctionHandler {
         output.append("\n*****").append("\n");
 
         return output.toString();
+    }
+    
+        public static String removeLineNumbers(String content) {
+        // Split the content into lines, process each line to remove the prefix, and join them back
+        return content.lines()
+                .map(line -> line.replaceFirst("^Line \\d+:\\s*", "")) // Regex to match and remove "Line N: "
+                .collect(Collectors.joining(System.lineSeparator()));
     }
     
     

@@ -365,7 +365,7 @@ public class ChatTopComponent extends TopComponent {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         //JButton addTaskButton = new JButton("Add Task");
         JButton removeTaskButton = new JButton("Remove Task");
-        JButton verifyTasksButton = new JButton("Open File");
+        JButton verifyTasksButton = new JButton("Resolve");
 
         //buttonsPanel.add(addTaskButton);
         buttonsPanel.add(removeTaskButton);
@@ -404,6 +404,9 @@ public class ChatTopComponent extends TopComponent {
             refreshTaskTable(taskTableModel);
         
             HyperlinkDemo.openSourceCode(task.getCodeFile(), task.getLineNumber()>0?task.getLineNumber():1);
+            
+            String selectedModel = (String) modelSelection.getSelectedItem(); // Get the selected model
+            TaskManager.getInstance(store).processTasks(  task,  selectedModel);
             
             }
         });
@@ -1176,7 +1179,7 @@ public class ChatTopComponent extends TopComponent {
 
                         Path path = Paths.get(key);
                         try {
-                            String fileContent = Files.readString(path);
+                            String fileContent =IDEHelper.prefixLineNumbers(key); //Files.readString(path);
                             String userInput = inputTextArea.getText();
                             String selectedModel = (String) modelSelection.getSelectedItem();
                             appendText(selectedModel + " is being used ... \n");
