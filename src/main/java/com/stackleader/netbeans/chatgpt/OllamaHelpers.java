@@ -197,7 +197,7 @@ public class OllamaHelpers {
                         if (outputArea != null) {
                             // Append response to the RSyntaxTextArea
                             SwingUtilities.invokeLater(() -> {
-                                outputArea.append(responseText + " ");
+                                outputArea.append(responseText);
                                  outputArea.requestFocusInWindow();
                             });
                         }

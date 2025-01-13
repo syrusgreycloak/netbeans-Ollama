@@ -749,7 +749,7 @@ public class ChatTopComponent extends TopComponent {
                     appendToOutputDocument("Ollama(" + selectedModel + "): responding...");
 
                     String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
-                    appendToOutputDocumentOllama(llmResp);
+                    appendToOutputDocumentOllama(llmResp, false);
                     //
                     //Store chat 
                     List<String> chat1 = Arrays.asList(userInput, llmResp);
@@ -827,7 +827,7 @@ public class ChatTopComponent extends TopComponent {
 
     // Method to append content to outputTextArea and handle code annotations
     // Method to append content to outputTextArea and show code blocks in pop-ups
-    private void appendToOutputDocumentOllama(String content) {
+    private void appendToOutputDocumentOllama(String content, boolean addText) {
         // Split the content by code block marker (```)
         String[] parts = content.split("```");
 
@@ -836,13 +836,13 @@ public class ChatTopComponent extends TopComponent {
 
             if (i % 2 == 0) {
                 // Even index: regular text (outside code blocks)
-                appendText(part);
+                if(addText) appendText(part);
             } else {
                 String language = part.split("\\r?\\n")[0];
                 part = part.substring(language.length());
                 // Odd index: code block, show in RSyntaxTextArea with syntax highlighting
                 showCodeInPopup(part.trim(), language);  // Assuming Java for this example
-                appendText(part);
+                if(addText)appendText(part);
             }
         }
 
@@ -1255,7 +1255,7 @@ public class ChatTopComponent extends TopComponent {
             chats.forEach(chatresult -> {
                 List<String> kvChats = store.getChat(chatresult.getChatId());
                 kvChats.forEach(chat -> {
-                    appendToOutputDocumentOllama(chat + "\n");
+                    appendToOutputDocumentOllama(chat + "\n", true);
                 });
 
             });
