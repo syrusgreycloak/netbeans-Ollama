@@ -748,7 +748,7 @@ public class ChatTopComponent extends TopComponent {
 
                     appendToOutputDocument("Ollama(" + selectedModel + "): responding...");
 
-                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null).getJSONObject("message").getString("content");
+                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp);
                     //
                     //Store chat 
@@ -847,7 +847,7 @@ public class ChatTopComponent extends TopComponent {
         }
 
         //
-        appendToOutputDocumentOllama(editorPane, content);
+       // appendToOutputDocumentOllama(editorPane, content);
     }
 
     /**
@@ -1026,7 +1026,7 @@ public class ChatTopComponent extends TopComponent {
         }
 
         //
-        appendToOutputDocument(editorPane, content);
+       // appendToOutputDocument(editorPane, content);
 
     }
 
