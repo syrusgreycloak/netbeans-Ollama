@@ -4,6 +4,7 @@
  */
 package com.stackleader.netbeans.chatgpt;
 
+import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.DefaultListCellRenderer;
@@ -53,6 +54,62 @@ public class IDEHelper {
     }
     
     
+         // Method to show the identified code in RSyntaxTextArea with "Copy to Clipboard" option
+    public static void showCodeInPopup(String code, String language) {
+        SwingUtilities.invokeLater(() -> {
+            // Create RSyntaxTextArea with appropriate syntax style
+            RSyntaxTextArea textArea = new RSyntaxTextArea(30, 120);
+            textArea.setText(code);
+            textArea.setEditable(false);
+            textArea.setSyntaxEditingStyle(getSyntaxStyle(language));
+            textArea.setCodeFoldingEnabled(true);
+
+            // Create a scroll pane for the text area
+            RTextScrollPane scrollPane = new RTextScrollPane(textArea);
+            scrollPane.setFoldIndicatorEnabled(true);
+
+            // Create custom buttons for the dialog
+            Object[] options = {"Copy", "Close"};
+
+            // Show the dialog with RSyntaxTextArea embedded
+            int result = JOptionPane.showOptionDialog(
+                    null, scrollPane, "Code Block Detected (" + language + ")",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null, options, options[0]
+            );
+
+            // Handle the user's selection
+            if (result == JOptionPane.YES_OPTION) {
+                copyToClipboard(code);
+                JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+    }
+    
+    
+    // Method to determine syntax style based on language string
+    private static String getSyntaxStyle(String language) {
+        switch (language.toLowerCase()) {
+            case "java":
+                return SyntaxConstants.SYNTAX_STYLE_JAVA;
+            case "python":
+                return SyntaxConstants.SYNTAX_STYLE_PYTHON;
+            case "javascript":
+                return SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
+            case "xml":
+                return SyntaxConstants.SYNTAX_STYLE_XML;
+            case "html":
+                return SyntaxConstants.SYNTAX_STYLE_HTML;
+            case "c":
+            case "cpp":
+                return SyntaxConstants.SYNTAX_STYLE_C;
+            // Add more cases as needed for other languages
+            default:
+                return SyntaxConstants.SYNTAX_STYLE_NONE;
+        }
+    }
+
     
        
   public static void listAllFiles(StringBuilder output) {

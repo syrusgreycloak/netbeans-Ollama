@@ -10,6 +10,9 @@ package com.redbus.TPTIntegration;
  */
 import com.redbus.store.MapDBVectorStore;
 import com.stackleader.netbeans.chatgpt.Configuration;
+import com.stackleader.netbeans.chatgpt.IDEHelper;
+import com.stackleader.netbeans.chatgpt.OllamaHelpers;
+import com.stackleader.netbeans.chatgpt.Task;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.text.BadLocationException;
@@ -24,10 +27,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
 import org.json.JSONObject;
+import org.openide.util.Exceptions;
 
 public class RestClientPanel extends JPanel {
 
@@ -90,8 +96,13 @@ public class RestClientPanel extends JPanel {
  
         JButton loadHistoryButton = new JButton("Load Selected");
         loadHistoryButton.addActionListener(e -> loadSelectedHistory());
+        
+         JButton generateButton = new JButton("Generate Client Code");//Move this to Top component in future.
+         generateButton.addActionListener(e-> suggestCode(null) );
+        
         historyButtonPanel.add(removeRowButton);
         historyButtonPanel.add(loadHistoryButton);
+        historyButtonPanel.add(generateButton);
         historyPanel.add(historyButtonPanel, BorderLayout.SOUTH);
        
 
@@ -224,7 +235,7 @@ public class RestClientPanel extends JPanel {
         }
     }
     
-    private void loadSelectedHistory() {
+    private RestClientHistory loadSelectedHistory() {
         int selectedRow = historyTable.getSelectedRow();
         if (selectedRow >= 0) {
             String id = (String) historyTableModel.getValueAt(selectedRow, 0);
@@ -238,25 +249,14 @@ public class RestClientPanel extends JPanel {
                 requestBodyArea.setText(history.getRequest());
                 responseArea.setText(history.getResponse());
             }
+            return history;
         } else {
             JOptionPane.showMessageDialog(this, "No row selected to load.", "Error", JOptionPane.ERROR_MESSAGE);
         }
+        return null;
     }
     
-//    private void addHistory(String method, String url, String response) {
-//        historyEntries.add(new RestClientHistory(System.currentTimeMillis()+"",method, url, response));
-//        historyTableModel.addRow(new Object[]{method, url, response});
-//    }
-
-//    private void removeSelectedRow() {
-//        int selectedRow = historyTable.getSelectedRow();
-//        if (selectedRow >= 0) {
-//            historyEntries.remove(selectedRow);
-//            historyTableModel.removeRow(selectedRow);
-//        } else {
-//            JOptionPane.showMessageDialog(this, "No row selected!", "Error", JOptionPane.ERROR_MESSAGE);
-//        }
-//    }
+ 
     
     private void deleteSelectedHistory() {
         int selectedRow = historyTable.getSelectedRow();
@@ -271,6 +271,28 @@ public class RestClientPanel extends JPanel {
         } else {
             JOptionPane.showMessageDialog(this, "No row selected for deletion.", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+    
+        public String suggestCode(  String prompt) {
+            String selectedModel=OllamaHelpers.selectModelName();
+            //First load selected
+           RestClientHistory requestHistory= loadSelectedHistory();
+        try {
+             
+            String fixPrompt =prompt!=null?prompt: "Suggest a java client code that can make the request and also parse it into serilizable object:\n";
+            
+            fixPrompt=fixPrompt+"\n"+requestHistory.toString();
+            
+            JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, fixPrompt,false);
+            
+            String aiResponse=codeSummary.getString("response");
+            IDEHelper.showCodeInPopup(aiResponse, "java");//Handle it better in future for all languages.
+            
+            return aiResponse;
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return null;
     }
 
       // Main method for testing

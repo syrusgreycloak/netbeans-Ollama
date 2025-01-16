@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -486,6 +487,27 @@ public class OllamaHelpers {
         return null;
     }
   
+     public static String selectModelName() {
+        String[] modelNames = fetchModelNames(); // Call your function to get the models
+
+        if (modelNames.length == 0) {
+            JOptionPane.showMessageDialog(null, "No models found.");
+            return null;
+        }
+
+        // Create a JComboBox with model names as options
+        JComboBox<String> modelComboBox = new JComboBox<>(modelNames);
+
+        // Show the JComboBox in a JOptionPane dialog
+        int result = JOptionPane.showConfirmDialog(
+                null, modelComboBox, "Select a Model", JOptionPane.OK_CANCEL_OPTION);
+
+        if (result == JOptionPane.OK_OPTION) {
+            return (String) modelComboBox.getSelectedItem();
+        } else {
+            return null;
+        }
+    }
     
       public static String[] fetchModelNames()  {
           
