@@ -18,6 +18,7 @@ package com.redbus.store;
  *
  * @author manoj.kumar
  */
+import com.redbus.TPTIntegration.RestClientHistory;
 import com.stackleader.netbeans.chatgpt.Task;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,6 +55,7 @@ public class MapDBVectorStore implements VectorStore {
     private final ConcurrentNavigableMap<String, List<String>> chatMap;  // Map to store chats
     private final ConcurrentNavigableMap<String, double[]> chatEmbeddingsMap;  // Map to store chat embeddings
     private final ConcurrentNavigableMap<String, Task> taskMap;  // Map to store tasks
+    private final ConcurrentNavigableMap<String, RestClientHistory> restHistoryMap;
 
     public MapDBVectorStore(String dbFilePath) {
         db = DBMaker.fileDB(dbFilePath).fileChannelEnable().transactionEnable()
@@ -66,6 +68,8 @@ public class MapDBVectorStore implements VectorStore {
         chatMap = db.treeMap("chats", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Serializer for chat list
         chatEmbeddingsMap = db.treeMap("chat_embeddings", Serializer.STRING, Serializer.DOUBLE_ARRAY).createOrOpen(); // Store embeddings
         taskMap = db.treeMap("tasks", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Store tasks
+        restHistoryMap = db.treeMap("rest_history", Serializer.STRING, Serializer.JAVA).createOrOpen();
+  
 
     }
 
@@ -323,6 +327,30 @@ public class MapDBVectorStore implements VectorStore {
     // Retrieve a task
     public Task getTask(String taskId) {
         return taskMap.get(taskId);
+    }
+    
+    //Rest Client
+    // Add REST client history
+    public synchronized void addRestClientHistory(String id, String method, String url, String request, String response) {
+        RestClientHistory history = new RestClientHistory(id, method, url,request, response);
+        restHistoryMap.put(id, history);
+        db.commit();
+    }
+
+    // Get REST client history by ID
+    public RestClientHistory getRestClientHistory(String id) {
+        return restHistoryMap.get(id);
+    }
+
+    // Remove REST client history by ID
+    public synchronized void removeRestClientHistory(String id) {
+        restHistoryMap.remove(id);
+        db.commit();
+    }
+
+    // Get all REST client history entries
+    public List<RestClientHistory> getAllRestClientHistory() {
+        return new ArrayList<>(restHistoryMap.values());
     }
 }
 

@@ -1,5 +1,6 @@
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.TPTIntegration.RestClientPanel;
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
 import com.redbus.store.PDFReaderUtils;
@@ -349,6 +350,10 @@ public class ChatTopComponent extends TopComponent {
         // Add Task List Tab
         JPanel taskListPanel = createTaskListPanel();
         tabbedPane.addTab("Task List", null, taskListPanel, "Manage Tasks");
+        
+        // Add Rest Client Tab
+        JPanel restClientPanel = new RestClientPanel(store);
+        tabbedPane.addTab("Rest Client", null, restClientPanel, "Rest Client");
 
         return tabbedPane;
     }
@@ -1263,5 +1268,4 @@ public class ChatTopComponent extends TopComponent {
             JOptionPane.showMessageDialog(inputTextArea, "Please put question in input box, for this search.");
         }
     }
-
 }
