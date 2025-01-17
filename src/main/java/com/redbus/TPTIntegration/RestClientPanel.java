@@ -98,11 +98,11 @@ public class RestClientPanel extends JPanel {
         loadHistoryButton.addActionListener(e -> loadSelectedHistory());
         
          JButton generateButton = new JButton("Generate Client Code");//Move this to Top component in future.
-         generateButton.addActionListener(e-> suggestCode(null) );
+         generateButton.addActionListener(e-> suggestCode(null,OllamaHelpers.selectModelName()) );
         
         historyButtonPanel.add(removeRowButton);
         historyButtonPanel.add(loadHistoryButton);
-        historyButtonPanel.add(generateButton);
+       // historyButtonPanel.add(generateButton);
         historyPanel.add(historyButtonPanel, BorderLayout.SOUTH);
        
 
@@ -273,8 +273,8 @@ public class RestClientPanel extends JPanel {
         }
     }
     
-        public String suggestCode(  String prompt) {
-            String selectedModel=OllamaHelpers.selectModelName();
+        public  String suggestCode(  String prompt, String selectedModel) {
+          //  String selectedModel=OllamaHelpers.selectModelName();
             //First load selected
            RestClientHistory requestHistory= loadSelectedHistory();
         try {

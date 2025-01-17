@@ -352,17 +352,49 @@ public class ChatTopComponent extends TopComponent {
         tabbedPane.addTab("Task List", null, taskListPanel, "Manage Tasks");
         
         // Add Rest Client Tab
-        JPanel restClientPanel = new RestClientPanel(store);
+        JPanel restClientPanel = createRestClientPanel();
         tabbedPane.addTab("Rest Client", null, restClientPanel, "Rest Client");
 
         return tabbedPane;
     }
+    
+    /**
+     * 
+     * @return 
+     */
+    private JPanel createRestClientPanel() {
+        JPanel taskListPanel = new JPanel(new BorderLayout());
+        RestClientPanel rcp = new RestClientPanel(store);
+        taskListPanel.add(rcp, BorderLayout.CENTER);
+
+        // Buttons Panel
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton generateButton = new JButton("Generate Client Code");
+        generateButton.addActionListener(e -> {
+            RequestProcessor.getDefault().post(new Runnable() {
+                @Override
+                public void run() {
+                    // Initialize ProgressHandle
+                    ProgressHandle progressHandle = ProgressHandle.createHandle("Generating code ... ");
+                    progressHandle.start();
+                    String response = rcp.suggestCode(inputTextArea.getText().isBlank()?null:inputTextArea.getText(),(String) modelSelection.getSelectedItem() );//Use prompt from input area if provided.
+                    appendText("====== Rest Client (Generated code)=======\n");
+                    appendToOutputDocument(response);
+                    progressHandle.finish();
+                }
+            });
+        });
+
+        buttonsPanel.add(generateButton);
+        taskListPanel.add(buttonsPanel, BorderLayout.NORTH);
+
+        return taskListPanel;
+    }
+
 
     private JPanel createTaskListPanel() {
         JPanel taskListPanel = new JPanel(new BorderLayout());
 
- 
-        
         JTable taskTable = new JTable(taskTableModel);
         JScrollPane taskScrollPane = new JScrollPane(taskTable);
         taskListPanel.add(taskScrollPane, BorderLayout.CENTER);

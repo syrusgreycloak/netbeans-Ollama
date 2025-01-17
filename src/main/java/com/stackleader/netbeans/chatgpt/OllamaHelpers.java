@@ -199,7 +199,7 @@ public class OllamaHelpers {
                             // Append response to the RSyntaxTextArea
                             SwingUtilities.invokeLater(() -> {
                                 outputArea.append(responseText);
-                                 outputArea.requestFocusInWindow();
+                                 //outputArea.requestFocusInWindow();
                             });
                         }
 
