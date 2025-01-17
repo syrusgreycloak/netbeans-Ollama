@@ -38,6 +38,15 @@ For the detected potential issues, the code is suggested with a click of button:
 Some more operational options are added:
 ![image](https://github.com/user-attachments/assets/da4a8a82-291f-4a8f-9d3f-736047f72a73)
 
+### Rest Client with LLM Power
+
+Basic Rest Client with Client code generation:
+![image](https://github.com/user-attachments/assets/329cd460-e07b-4c20-9028-0b34b5f472bd)
+
+Generated Code :
+
+![image](https://github.com/user-attachments/assets/e40c54d9-0832-4c2d-a10b-a57c6688440b)
+
 
 ### OpenAI Error Message
 
