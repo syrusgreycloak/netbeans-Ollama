@@ -12,11 +12,7 @@ import com.redbus.store.MapDBVectorStore;
 import com.stackleader.netbeans.chatgpt.Configuration;
 import com.stackleader.netbeans.chatgpt.IDEHelper;
 import com.stackleader.netbeans.chatgpt.OllamaHelpers;
-import io.swagger.models.HttpMethod;
-import io.swagger.models.Operation;
-import io.swagger.models.Path;
-import io.swagger.models.Swagger;
-import io.swagger.parser.SwaggerParser;
+import com.stackleader.netbeans.chatgpt.Task;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.text.BadLocationException;
@@ -27,14 +23,14 @@ import javax.swing.text.StyledEditorKit;
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.prefs.Preferences;
 import org.json.JSONObject;
 import org.openide.util.Exceptions;
@@ -103,11 +99,7 @@ public class RestClientPanel extends JPanel {
         
          JButton generateButton = new JButton("Generate Client Code");//Move this to Top component in future.
          generateButton.addActionListener(e-> suggestCode(null) );
-         
-        JButton swaggerImportButton = new JButton("Import Swagger");
-        swaggerImportButton.addActionListener(e->importSwaggerFileFromUrl(JOptionPane.showInputDialog(this, "Please enter the Swagger JSON URL:")));
         
-        historyButtonPanel.add(swaggerImportButton);
         historyButtonPanel.add(removeRowButton);
         historyButtonPanel.add(loadHistoryButton);
         historyButtonPanel.add(generateButton);
@@ -301,48 +293,6 @@ public class RestClientPanel extends JPanel {
             Exceptions.printStackTrace(ex);
         }
         return null;
-    }
-        
-        //REST
-            // Import Swagger file method and add endpoints to history
- 
-
-    private void importSwaggerFileFromUrl(String urlStr) {
-        try {
-            URL url = new URL(urlStr);
-            InputStream is = url.openStream();
-
-            Swagger swagger = new SwaggerParser().read(urlStr); // Assuming you're using a version of Swagger Parser that supports this method.
-            populateApiEndpoints(swagger);
-
-        } catch (Exception e) {
-            e.printStackTrace(); // Handle the exception according to your application's needs
-        }
-    }
-
-    // Populate API endpoints from Swagger and add to history table
-    private void populateApiEndpoints(Swagger swagger) {
-        Map<String, Path> paths = swagger.getPaths();
-        
-        for (Map.Entry<String, Path> entry : paths.entrySet()) {
-            String path = entry.getKey();
-            Path apiPath = entry.getValue();
-            
-            for (HttpMethod httpMethod : apiPath.getOperationMap().keySet()) {
-                Operation operation = apiPath.getOperationMap().get(httpMethod);
-               
-                // Add each API endpoint to the history table
-                String method = httpMethod.name();
-                String url = path;
-
-                // Save it to MapDB store
-                String id = String.valueOf(System.currentTimeMillis());
-                taskStore.addRestClientHistory(id, method, url, "","");
-
-                // Add it to the table for display
-                addHistoryToTable(id, method, url,"","");
-            }
-        }
     }
 
       // Main method for testing
