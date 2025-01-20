@@ -235,7 +235,7 @@ public class RestClientPanel extends JPanel {
         }
     }
     
-    private RestClientHistory loadSelectedHistory() {
+    public  RestClientHistory loadSelectedHistory() {
         int selectedRow = historyTable.getSelectedRow();
         if (selectedRow >= 0) {
             String id = (String) historyTableModel.getValueAt(selectedRow, 0);

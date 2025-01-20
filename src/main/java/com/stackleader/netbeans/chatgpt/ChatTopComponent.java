@@ -1,5 +1,6 @@
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.TPTIntegration.RestClientHistory;
 import com.redbus.TPTIntegration.RestClientPanel;
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
@@ -386,6 +387,42 @@ public class ChatTopComponent extends TopComponent {
         });
 
         buttonsPanel.add(generateButton);
+        
+         // Buttons Panel
+ 
+        JButton generateToolButton = new JButton("Generate Tool");
+        generateToolButton.addActionListener(e -> {
+            String selectedModel = (String) modelSelection.getSelectedItem();
+            RequestProcessor.getDefault().post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        // Initialize ProgressHandle
+                        ProgressHandle progressHandle = ProgressHandle.createHandle("Generating Tool/Function ... ");
+                        progressHandle.start();
+                        RestClientHistory rcps=rcp.loadSelectedHistory();
+                        String prompt = (inputTextArea.getText().isBlank() ? "Use the data provided and restructure it in the JSON Schema provided.\n" +
+                                "Output should be in JSON\n.Schema: \\n"+OllamaHelpers.TOOL_FORMAT : inputTextArea.getText())+"\n Raw data-> "+rcps.getRequest() ;
+                        
+                        JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
+                        //  appendText(codeSummary.toString() + "\n");
+                        JSONObject jsonObject = new JSONObject(codeSummary.getString("response"));
+                        
+                       // String response = rcp.suggestCode(inputTextArea.getText().isBlank()?null:inputTextArea.getText(),(String) modelSelection.getSelectedItem() );//Use prompt from input area if provided.
+                        appendText("====== Rest Client (Generated code)=======\n");
+                        appendToOutputDocument(prompt+"\n");
+                        appendToOutputDocument(jsonObject.toString(1));
+                        progressHandle.finish();
+                    } catch (Exception ex) {
+                        Exceptions.printStackTrace(ex);
+                    }
+                }
+            });
+        });
+
+        buttonsPanel.add(generateToolButton);
+        
+        
         taskListPanel.add(buttonsPanel, BorderLayout.NORTH);
 
         return taskListPanel;

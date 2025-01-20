@@ -874,4 +874,28 @@ public class OllamaHelpers {
 "  }\n" +
 "}";
     
+    public static String TOOL_FORMAT="{\n" +
+"  \"type\": \"function\",\n" +
+"  \"function\": {\n" +
+"    \"name\": \"function_name\",\n" +
+"    \"description\": \"function_description\",\n" +
+"    \"parameters\": {\n" +
+"      \"type\": \"object\",\n" +
+"      \"properties\": {\n" +
+"        \"parameter1_name\": {\n" +
+"          \"type\": \"parameter1_type\",\n" +
+"          \"description\": \"parameter1_description\",\n" +
+"          \"enum\": [\"optional_enum_value1\", \"optional_enum_value2\"]\n" +
+"        },\n" +
+"        \"parameter2_name\": {\n" +
+"          \"type\": \"parameter2_type\",\n" +
+"          \"description\": \"parameter2_description\",\n" +
+"          \"enum\": [\"optional_enum_value1\", \"optional_enum_value2\"]\n" +
+"        }\n" +
+"      },\n" +
+"      \"required\": [\"parameter1_name\", \"parameter2_name\"]\n" +
+"    }\n" +
+"  }\n" +
+"}";
+    
 }
