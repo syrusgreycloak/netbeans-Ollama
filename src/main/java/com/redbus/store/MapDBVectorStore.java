@@ -56,20 +56,21 @@ public class MapDBVectorStore implements VectorStore {
     private final ConcurrentNavigableMap<String, double[]> chatEmbeddingsMap;  // Map to store chat embeddings
     private final ConcurrentNavigableMap<String, Task> taskMap;  // Map to store tasks
     private final ConcurrentNavigableMap<String, RestClientHistory> restHistoryMap;
+    private final ConcurrentNavigableMap<String, String> restToolMap;
 
-    public MapDBVectorStore(String dbFilePath) {
+    public MapDBVectorStore(String dbFilePath, String vectorCollection) {
         db = DBMaker.fileDB(dbFilePath).fileChannelEnable().transactionEnable()
                 .fileMmapEnable()
                 .fileMmapEnableIfSupported()
                 .fileMmapPreclearDisable()
                 .cleanerHackEnable()
                 .make();
-        vectorMap = db.treeMap("vectors", Serializer.STRING, new VectorGroupSerializer()).createOrOpen();
+        vectorMap = db.treeMap(vectorCollection, Serializer.STRING, new VectorGroupSerializer()).createOrOpen();
         chatMap = db.treeMap("chats", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Serializer for chat list
         chatEmbeddingsMap = db.treeMap("chat_embeddings", Serializer.STRING, Serializer.DOUBLE_ARRAY).createOrOpen(); // Store embeddings
         taskMap = db.treeMap("tasks", Serializer.STRING, Serializer.JAVA).createOrOpen();  // Store tasks
         restHistoryMap = db.treeMap("rest_history", Serializer.STRING, Serializer.JAVA).createOrOpen();
-  
+        restToolMap = db.treeMap("restToolMap", Serializer.STRING, Serializer.STRING).createOrOpen();
 
     }
 
@@ -351,6 +352,17 @@ public class MapDBVectorStore implements VectorStore {
     // Get all REST client history entries
     public List<RestClientHistory> getAllRestClientHistory() {
         return new ArrayList<>(restHistoryMap.values());
+    }
+    
+    //Tools
+    /**
+     * 
+     * @param restId
+     * @param toolId 
+     */
+    public void saveRestToolMapping(String restId, String toolId){
+        restToolMap.put(restId, toolId);
+        db.commit();
     }
 }
 

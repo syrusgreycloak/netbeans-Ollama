@@ -122,9 +122,11 @@ public class RestClientPanel extends JPanel {
         add(urlPanel, BorderLayout.NORTH);
         add(mainSplitPane, BorderLayout.CENTER);
         
-        // Load history from MapDB
-        loadHistoryFromStore();
-
+        // Load history from MapDB, handle issue in loading older data.
+        try {
+            loadHistoryFromStore();
+        } catch (Exception ex) {
+        }
         // Event Listeners
         getButton.addActionListener(e -> performGetRequest());
         postButton.addActionListener(e -> performPostRequest());
@@ -329,7 +331,7 @@ public class RestClientPanel extends JPanel {
             System.out.println("Plugin initialized with home directory: " + pluginHomeDir);
 
             //Initiate Vector Store
-            store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db");
+            store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db", "vectors");
             RestClientPanel restClientPanel = new RestClientPanel(store);
             dialog.add(restClientPanel);
 

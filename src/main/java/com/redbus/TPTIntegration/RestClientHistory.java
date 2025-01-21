@@ -4,6 +4,8 @@
  */
 package com.redbus.TPTIntegration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 
 /**
@@ -14,6 +16,8 @@ import java.io.Serializable;
 import java.io.Serializable;
 
 public class RestClientHistory implements Serializable {
+    private static final long serialVersionUID = 4746311040410747881L; // Added serialVersionUID
+
     private final String id;
     private final String method;
     private final String url;
@@ -58,6 +62,26 @@ public class RestClientHistory implements Serializable {
                 ", request='" + request + '\'' + // Include request in the string representation
                 ", response='" + response + '\'' +
                 '}';
+    }
+    
+    
+    /**
+     * reserved for future.
+     * @param functionJSON
+     * @return
+     * @throws JsonProcessingException 
+     */
+    public static RestClientHistory functionMapper(String functionJSON) throws JsonProcessingException{
+    
+         ObjectMapper objectMapper = new ObjectMapper();
+        RFunction function = objectMapper.readValue(functionJSON, RFunction.class);
+        
+        //Parameters params = function.getParameters().getProperties();
+
+        // Example usage of parameters
+        //System.out.println("Model: " + params.getModel().getDescription());
+        //System.out.println("Prompt: " + params.getPrompt().getDescription());
+        return null;
     }
 }
 

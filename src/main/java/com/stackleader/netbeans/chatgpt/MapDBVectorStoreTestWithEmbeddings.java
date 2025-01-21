@@ -20,7 +20,7 @@ public class MapDBVectorStoreTestWithEmbeddings {
     
     public static void main(String[] args) {
         // Initialize the vector store (change the path to your database file)
-        MapDBVectorStore vectorStore = new MapDBVectorStore("chat_vectors.db");
+        MapDBVectorStore vectorStore = new MapDBVectorStore("chat_vectors.db", "vectors");
 
         // Example chats (some similar and some dissimilar to the query)
         List<String> chat1 = Arrays.asList("Hello, how are you?", "I'm fine, thank you.");

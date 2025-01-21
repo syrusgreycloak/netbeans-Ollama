@@ -357,7 +357,7 @@ public class TaskManager {
             File selectedFile = fileChooser.getSelectedFile();
             System.out.println("Selected File: " + selectedFile.getAbsolutePath());
             
-            MapDBVectorStore store=new MapDBVectorStore(selectedFile.getAbsolutePath());
+            MapDBVectorStore store=new MapDBVectorStore(selectedFile.getAbsolutePath(), "vectors");
             TaskManager.getInstance(store).processTasks(store, "llama3.2:1b");
             
         } else {

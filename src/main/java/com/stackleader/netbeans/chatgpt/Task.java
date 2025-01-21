@@ -13,6 +13,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
 
 public class Task implements java.io.Serializable  {
+    
+    private static final long serialVersionUID = 1746311040410747881L; // Added serialVersionUID
+
     private int lineNumber;
     private String severity;
     private String description;

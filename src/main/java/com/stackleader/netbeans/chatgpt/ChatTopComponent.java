@@ -5,6 +5,7 @@ import com.redbus.TPTIntegration.RestClientPanel;
 import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
 import com.redbus.store.PDFReaderUtils;
+import com.redbus.store.Vector;
 import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
 import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.callLLMVision;
@@ -59,6 +60,7 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.Gutter;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.progress.ProgressHandle;
@@ -160,7 +162,7 @@ public class ChatTopComponent extends TopComponent {
         System.out.println("Plugin initialized with home directory: " + pluginHomeDir);
         
         //Initiate Vector Store
-        store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db");
+        store = new MapDBVectorStore(pluginHomeDir + "/MKVECOLLAMA.db", "vectors");
 
         
         //Task List
@@ -191,9 +193,6 @@ public class ChatTopComponent extends TopComponent {
             // JOptionPane.showConfirmDialog(outputTextArea,"Open Projects: "+ OpenProjects.getDefault().getOpenProjects()[0].getProjectDirectory().getPath());//Testing here
             appendText(project.getProjectDirectory().getName() + ":" + project.getProjectDirectory().getPath() + "\n");
         }
-        
-       
-
     }
 
     private String promptForToken() {
@@ -409,9 +408,42 @@ public class ChatTopComponent extends TopComponent {
                         JSONObject jsonObject = new JSONObject(codeSummary.getString("response"));
                         
                        // String response = rcp.suggestCode(inputTextArea.getText().isBlank()?null:inputTextArea.getText(),(String) modelSelection.getSelectedItem() );//Use prompt from input area if provided.
-                        appendText("====== Rest Client (Generated code)=======\n");
+                        appendText("====== Rest Client (Tools/Functions)=======\n");
                         appendToOutputDocument(prompt+"\n");
+                        appendText("======(Tools/Functions)=======\n");
                         appendToOutputDocument(jsonObject.toString(1));
+                        List<String> chat1 = Arrays.asList(jsonObject.toString());
+                        double[] embeddings = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                        Map<String, Object> toolInfo=new HashMap<>();
+                        toolInfo.put("tool", jsonObject.toString());
+                        toolInfo.put("restUrl", rcps.getUrl());//Save url also
+                        //Add it to the vector store?
+                        String randomId = java.util.UUID.randomUUID().toString(); 
+                        Vector vector = new Vector(randomId, jsonObject.getJSONObject("function").getString("name"), embeddings, toolInfo);
+
+                        // Insert the vector
+                        store.insertVector(vector);
+
+                        //Test it out
+                        chat1 = Arrays.asList(jsonObject.getJSONObject("function").getString("description"));
+                        embeddings = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+
+                        appendText("====== Rest Client Functions=======\n");
+                        List<Vector> results = store.searchVectors(embeddings, 0.0);
+                        int toolCount = results.size();
+
+                        if (toolCount <= 1) {
+                            appendText(toolCount + " Tool\n");
+                        } else {
+                            appendText(toolCount + " Tools\n");
+                        }
+                        for (Vector vec : results) {
+                            appendText(new JSONObject(vec.getMetadata()).toString(1));
+                        }
+                        
+                        //Save Rest to Tool Mapping
+                        store.saveRestToolMapping(rcps.getId(), randomId);
+                        
                         progressHandle.finish();
                     } catch (Exception ex) {
                         Exceptions.printStackTrace(ex);
@@ -421,8 +453,7 @@ public class ChatTopComponent extends TopComponent {
         });
 
         buttonsPanel.add(generateToolButton);
-        
-        
+
         taskListPanel.add(buttonsPanel, BorderLayout.NORTH);
 
         return taskListPanel;
@@ -794,7 +825,12 @@ public class ChatTopComponent extends TopComponent {
         return new JScrollPane(inputTextArea);
     }
     private JTextArea inputTextArea;
-
+    
+    /**
+     * This Java code snippet is designed to handle user input and interact with
+     * both ChatGPT (via the OpenAI API) and Ollama, a local open-source LLMs
+     * framework.
+     */
     private void submit() {
         String userInput = inputTextArea.getText();
         String selectedModel = (String) modelSelection.getSelectedItem(); // Get the selected model
@@ -820,9 +856,23 @@ public class ChatTopComponent extends TopComponent {
                 appendToOutputDocument(System.lineSeparator());
                 if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel)) {
 
+                    List<String> usinput = Arrays.asList(userInput);
+                    double[] embeddings = OllamaHelpers.getChatEmbedding(usinput); // Similar chat to query
+                    List<Vector> results = store.searchTopNVectors(embeddings, 0.0,3);//Pick top 3 matches.
+                    JSONArray tools=new JSONArray();
+                    int toolCount = results.size();
+                    if (toolCount > 0) {
+                        appendText("====== Using Rest Client Functions=======\n");
+                        for (Vector tool : results) {
+                            JSONObject jtool = new JSONObject(new JSONObject(tool.getMetadata()).getString("tool"));
+                            appendText(jtool.getJSONObject("function").getString("name") + "\n");
+                            tools.put(jtool);
+                        }
+                    }
+
                     appendToOutputDocument("Ollama(" + selectedModel + "): responding...");
 
-                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
+                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, toolCount>0?tools:null, outputTextArea).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp, false);
                     //
                     //Store chat 
