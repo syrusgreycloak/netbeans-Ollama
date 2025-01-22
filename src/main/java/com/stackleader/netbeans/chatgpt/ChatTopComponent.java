@@ -861,25 +861,30 @@ public class ChatTopComponent extends TopComponent {
                     List<Vector> results = store.searchTopNVectors(embeddings, 0.0,3);//Pick top 3 matches.
                     JSONArray tools=new JSONArray();
                     int toolCount = results.size();
-                    if (toolCount > 0) {
-                        appendText("====== Using Rest Client Functions=======\n");
-                        for (Vector tool : results) {
-                            JSONObject jtool = new JSONObject(new JSONObject(tool.getMetadata()).getString("tool"));
-                            appendText(jtool.getJSONObject("function").getString("name") + "\n");
-                            tools.put(jtool);
-                        }
-                    }
+//                    if (toolCount > 0) { //Needs a fix to make sure the tools are tested before adding to system
+//                        appendText("====== Using Rest Client Functions=======\n");
+//                        for (Vector tool : results) {
+//                            JSONObject jtool = new JSONObject(new JSONObject(tool.getMetadata()).getString("tool"));
+//                            appendText(jtool.getJSONObject("function").getString("name") + "\n");
+//                            tools.put(jtool);
+//                        }
+//                    }
 
                     appendToOutputDocument("Ollama(" + selectedModel + "): responding...");
+                    //store.addRestClientHistory(System.currentTimeMillis()+"", "TOOL", "-NA-",tools.toString(1), "-NA-"); toolCount>0?tools:
 
-                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, toolCount>0?tools:null, outputTextArea).getJSONObject("message").getString("content");
+                    String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp, false);
+                    
+                    
                     //
                     //Store chat 
                     List<String> chat1 = Arrays.asList(userInput, llmResp);
                     double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
                     store.storeChat("NBCHAT-" + System.currentTimeMillis(), chat1, embedding1);
                     appendText("[+m]\n");
+                    
+                    
                     return null;
                 } else {
                     callChatGPT(userInput);

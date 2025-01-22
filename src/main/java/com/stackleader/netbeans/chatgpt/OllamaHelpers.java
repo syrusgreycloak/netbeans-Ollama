@@ -233,10 +233,10 @@ public class OllamaHelpers {
            
         }   catch (MalformedURLException ex) {
             Logger.getLogger(OllamaHelpers.class.getName()).log(Level.SEVERE, null, ex);
-              JOptionPane.showMessageDialog(null, "callLLMChat -> "+ex.getMessage());
+              JOptionPane.showMessageDialog(null, "callLLMChat -> "+ex.getMessage()+tools.toString(1));
         } catch (Exception ex) {
             Logger.getLogger(OllamaHelpers.class.getName()).log(Level.SEVERE, null, ex);
-              JOptionPane.showMessageDialog(null, "callLLMChat -> "+ex.getMessage());
+              JOptionPane.showMessageDialog(null, "callLLMChat -> "+ex.getMessage()+tools.toString(1));
         }
        return responseJ;
     }
