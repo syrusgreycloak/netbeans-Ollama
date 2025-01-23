@@ -5,6 +5,8 @@
 package com.stackleader.netbeans.chatgpt;
 
 import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.DefaultListCellRenderer;
@@ -32,7 +34,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+import javax.swing.table.DefaultTableModel;
 import org.fife.ui.rtextarea.*;
 import org.fife.ui.rsyntaxtextarea.*;
 
@@ -86,8 +90,71 @@ public class IDEHelper {
             }
         });
     }
-    
-    
+
+          // Method to show the identified code in RSyntaxTextArea with "Copy to Clipboard" option
+    public static void showCodeInPopup(String code, String language, Map<String, Object> codeMap) {
+        SwingUtilities.invokeLater(() -> {
+            // Create JTable from the HashMap
+            DefaultTableModel tableModel = new DefaultTableModel();
+            tableModel.addColumn("Key");
+            tableModel.addColumn("Value");
+
+            for (Map.Entry<String, Object> entry : codeMap.entrySet()) {
+                tableModel.addRow(new Object[]{entry.getKey(), entry.getValue()});
+            }
+
+            JTable table = new JTable(tableModel);
+            table.setPreferredScrollableViewportSize(new Dimension(300, 200));
+            table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
+            // Create a scroll pane for the table
+            JScrollPane scrollPanet = new JScrollPane(table);
+
+            // Create RSyntaxTextArea with appropriate syntax style
+            RSyntaxTextArea textArea = new RSyntaxTextArea(30, 120);
+            textArea.setText(code);
+            textArea.setEditable(false);
+            textArea.setSyntaxEditingStyle(getSyntaxStyle(language));
+            textArea.setCodeFoldingEnabled(true);
+
+            // Create a scroll pane for the text area
+            RTextScrollPane scrollPane = new RTextScrollPane(textArea);
+            scrollPane.setFoldIndicatorEnabled(true);
+            
+            // Add an input field below the table
+            JTextField inputField = new JTextField("Prompt goes here...");
+            JPanel tablePanelWithInput = new JPanel(new BorderLayout());
+            tablePanelWithInput.add(scrollPanet, BorderLayout.CENTER); 
+            tablePanelWithInput.add(inputField, BorderLayout.SOUTH);
+
+            // Create a JPanel to hold both scroll panes
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.add(scrollPane, BorderLayout.NORTH); // Add table scroll pane on top
+            panel.add(tablePanelWithInput, BorderLayout.CENTER); // Add text area scroll pane in the center
+
+            // Create custom buttons for the dialog
+            Object[] options = {"Test Tools Call", "Close"};
+
+            // Show the dialog with RSyntaxTextArea embedded
+            int result = JOptionPane.showOptionDialog(
+                    null, panel, "Code Block Detected (" + language + ")",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null, options, options[0]
+            );
+
+            // Handle the user's selection
+            if (result == JOptionPane.YES_OPTION) {
+                java.util.List<ChatMessage> messages = new CopyOnWriteArrayList<>();
+                 final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), inputField.getText());
+                 messages.add(userMessage);
+                  JSONArray tools=new JSONArray();
+                  tools.put(new JSONObject(code));
+               String llmResp = OllamaHelpers.callLLMChat(null, OllamaHelpers.selectModelName(), messages, tools, textArea).getJSONObject("message").getString("content");
+                JOptionPane.showMessageDialog(null, llmResp, "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+    }
     // Method to determine syntax style based on language string
     private static String getSyntaxStyle(String language) {
         switch (language.toLowerCase()) {
@@ -110,8 +177,6 @@ public class IDEHelper {
         }
     }
 
-    
-       
   public static void listAllFiles(StringBuilder output) {
     Mutex.EVENT.readAccess(() -> {
         // Get the currently opened projects

@@ -6,7 +6,6 @@ import com.redbus.store.ChatSimilarityResult;
 import com.redbus.store.MapDBVectorStore;
 import com.redbus.store.PDFReaderUtils;
 import com.redbus.store.Vector;
-import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
 import static com.stackleader.netbeans.chatgpt.JavaFileDependencyScanner.scanJavaFiles;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.callLLMVision;
 import static com.stackleader.netbeans.chatgpt.OllamaHelpers.convertImageToBase64;
@@ -27,9 +26,6 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.event.ActionEvent;
@@ -37,7 +33,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -69,17 +64,10 @@ import org.openide.NotifyDescriptor;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.util.ImageUtilities;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
-import org.openide.cookies.EditorCookie;
-import org.openide.explorer.ExplorerManager;
-import org.openide.util.Utilities;
-import org.openide.filesystems.FileObject;
-import org.openide.util.Lookup;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
-import org.openide.awt.StatusDisplayer;
 import org.openide.util.Exceptions;
 import org.openide.util.RequestProcessor;
 
@@ -387,8 +375,7 @@ public class ChatTopComponent extends TopComponent {
 
         buttonsPanel.add(generateButton);
         
-         // Buttons Panel
- 
+        // Buttons Panel 
         JButton generateToolButton = new JButton("Generate Tool");
         generateToolButton.addActionListener(e -> {
             String selectedModel = (String) modelSelection.getSelectedItem();
@@ -400,12 +387,17 @@ public class ChatTopComponent extends TopComponent {
                         ProgressHandle progressHandle = ProgressHandle.createHandle("Generating Tool/Function ... ");
                         progressHandle.start();
                         RestClientHistory rcps=rcp.loadSelectedHistory();
-                        String prompt = (inputTextArea.getText().isBlank() ? "Use the data provided and restructure it in the JSON Schema provided.\n" +
+                        String prompt = (inputTextArea.getText().isBlank() ? "Use the data provided and restructure it in the JSON Schema provided. Do not make voolean as enum. "
+                                + "Do not add empty enum. Enum is only applicable for string.\n" +
                                 "Output should be in JSON\n.Schema: \\n"+OllamaHelpers.TOOL_FORMAT : inputTextArea.getText())+"\n Raw data-> "+rcps.getRequest() ;
                         
                         JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
                         //  appendText(codeSummary.toString() + "\n");
                         JSONObject jsonObject = new JSONObject(codeSummary.getString("response"));
+                        Map<String, Object> toolInfo=new HashMap<>();
+                        toolInfo.put("tool", jsonObject.toString());
+                        toolInfo.put("restUrl", rcps.getUrl());//Save url also
+                        IDEHelper.showCodeInPopup(jsonObject.toString(1), "json",toolInfo);
                         
                        // String response = rcp.suggestCode(inputTextArea.getText().isBlank()?null:inputTextArea.getText(),(String) modelSelection.getSelectedItem() );//Use prompt from input area if provided.
                         appendText("====== Rest Client (Tools/Functions)=======\n");
@@ -414,9 +406,7 @@ public class ChatTopComponent extends TopComponent {
                         appendToOutputDocument(jsonObject.toString(1));
                         List<String> chat1 = Arrays.asList(jsonObject.toString());
                         double[] embeddings = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                        Map<String, Object> toolInfo=new HashMap<>();
-                        toolInfo.put("tool", jsonObject.toString());
-                        toolInfo.put("restUrl", rcps.getUrl());//Save url also
+                        
                         //Add it to the vector store?
                         String randomId = java.util.UUID.randomUUID().toString(); 
                         Vector vector = new Vector(randomId, jsonObject.getJSONObject("function").getString("name"), embeddings, toolInfo);
