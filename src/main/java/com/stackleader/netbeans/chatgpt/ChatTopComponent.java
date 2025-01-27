@@ -1,5 +1,6 @@
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.TPTIntegration.CodeDisplayPanel;
 import com.redbus.TPTIntegration.RestClientHistory;
 import com.redbus.TPTIntegration.RestClientPanel;
 import com.redbus.store.ChatSimilarityResult;
@@ -327,9 +328,11 @@ public class ChatTopComponent extends TopComponent {
         }
     }
 
+     // Create a tabbed pane
+        JTabbedPane tabbedPane;
     private JTabbedPane createTabbedPane() {
         // Create a tabbed pane
-        JTabbedPane tabbedPane = new JTabbedPane();
+         tabbedPane = new JTabbedPane();
 
         // Add Output Tab
         JPanel outputPanel = createOutputScrollPane();
@@ -397,7 +400,16 @@ public class ChatTopComponent extends TopComponent {
                         Map<String, Object> toolInfo=new HashMap<>();
                         toolInfo.put("tool", jsonObject.toString());
                         toolInfo.put("restUrl", rcps.getUrl());//Save url also
-                        IDEHelper.showCodeInPopup(jsonObject.toString(1), "json",toolInfo);
+                        //IDEHelper.showCodeInPopup(jsonObject.toString(1), "json",toolInfo);
+                        
+                        // Replace HyperlinkDemo.openSourceCode with:
+
+                        CodeDisplayPanel newPanel = new CodeDisplayPanel(jsonObject.toString(1), "json", toolInfo);
+                        // Add panel to tabbed pane
+                        tabbedPane.addTab("New tool", null, newPanel, "Tool Created");
+
+                        // Set selected tab if needed
+                        //tabbedPane.setSelectedIndex(newPanel);
                         
                        // String response = rcp.suggestCode(inputTextArea.getText().isBlank()?null:inputTextArea.getText(),(String) modelSelection.getSelectedItem() );//Use prompt from input area if provided.
                         appendText("====== Rest Client (Tools/Functions)=======\n");

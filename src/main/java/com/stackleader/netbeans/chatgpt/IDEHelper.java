@@ -4,7 +4,7 @@
  */
 package com.stackleader.netbeans.chatgpt;
 
-import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
+
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import java.util.HashMap;
@@ -120,11 +120,11 @@ public class IDEHelper {
             // Create a scroll pane for the text area
             RTextScrollPane scrollPane = new RTextScrollPane(textArea);
             scrollPane.setFoldIndicatorEnabled(true);
-            
+
             // Add an input field below the table
             JTextField inputField = new JTextField("Prompt goes here...");
             JPanel tablePanelWithInput = new JPanel(new BorderLayout());
-            tablePanelWithInput.add(scrollPanet, BorderLayout.CENTER); 
+            tablePanelWithInput.add(scrollPanet, BorderLayout.CENTER);
             tablePanelWithInput.add(inputField, BorderLayout.SOUTH);
 
             // Create a JPanel to hold both scroll panes
@@ -133,7 +133,7 @@ public class IDEHelper {
             panel.add(tablePanelWithInput, BorderLayout.CENTER); // Add text area scroll pane in the center
 
             // Create custom buttons for the dialog
-            Object[] options = {"Test Tools Call", "Close"};
+            Object[] options = {"Copy", "Test Tools Call", "Close"};
 
             // Show the dialog with RSyntaxTextArea embedded
             int result = JOptionPane.showOptionDialog(
@@ -145,18 +145,21 @@ public class IDEHelper {
 
             // Handle the user's selection
             if (result == JOptionPane.YES_OPTION) {
+                copyToClipboard(code);
+                JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else if (result == 1) { // Custom Function button clicked
                 java.util.List<ChatMessage> messages = new CopyOnWriteArrayList<>();
-                 final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), inputField.getText());
-                 messages.add(userMessage);
-                  JSONArray tools=new JSONArray();
-                  tools.put(new JSONObject(code));
-               String llmResp = OllamaHelpers.callLLMChat(null, OllamaHelpers.selectModelName(), messages, tools, textArea).getJSONObject("message").getString("content");
+                final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), inputField.getText());
+                messages.add(userMessage);
+                JSONArray tools = new JSONArray();
+                tools.put(new JSONObject(code));
+                String llmResp = OllamaHelpers.callLLMChat(null, OllamaHelpers.selectModelName(), messages, tools, textArea).getJSONObject("message").getString("content");
                 JOptionPane.showMessageDialog(null, llmResp, "Success", JOptionPane.INFORMATION_MESSAGE);
             }
         });
     }
     // Method to determine syntax style based on language string
-    private static String getSyntaxStyle(String language) {
+    public static String getSyntaxStyle(String language) {
         switch (language.toLowerCase()) {
             case "java":
                 return SyntaxConstants.SYNTAX_STYLE_JAVA;
@@ -171,6 +174,8 @@ public class IDEHelper {
             case "c":
             case "cpp":
                 return SyntaxConstants.SYNTAX_STYLE_C;
+              case "json":
+                return SyntaxConstants.SYNTAX_STYLE_JSON;  
             // Add more cases as needed for other languages
             default:
                 return SyntaxConstants.SYNTAX_STYLE_NONE;
@@ -441,6 +446,13 @@ public class IDEHelper {
         }
         return result.toString();
     }
+         
+                   // Method to copy code to the system clipboard
+    public static void copyToClipboard(String code) {
+        StringSelection stringSelection = new StringSelection(code);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(stringSelection, null);
+    }
 
 }
 
@@ -511,12 +523,7 @@ class FilesList implements FunctionHandler {
                 .collect(Collectors.joining(System.lineSeparator()));
     }
         
-           // Method to copy code to the system clipboard
-    public static void copyToClipboard(String code) {
-        StringSelection stringSelection = new StringSelection(code);
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(stringSelection, null);
-    }
+ 
     
     
 }

@@ -9,7 +9,8 @@ package com.stackleader.netbeans.chatgpt;
  * @author manoj.kumar
  */
 import com.redbus.store.MapDBVectorStore;
-import static com.stackleader.netbeans.chatgpt.FilesList.copyToClipboard;
+import static com.stackleader.netbeans.chatgpt.IDEHelper.copyToClipboard;
+
 
 import java.awt.BorderLayout;
 import java.awt.Component;
