@@ -1,6 +1,6 @@
 package com.stackleader.netbeans.chatgpt;
 
-import com.redbus.TPTIntegration.CodeDisplayPanel;
+import com.redbus.TPTIntegration.ToolDisplayPanel;
 import com.redbus.TPTIntegration.RestClientHistory;
 import com.redbus.TPTIntegration.RestClientPanel;
 import com.redbus.store.ChatSimilarityResult;
@@ -401,12 +401,12 @@ public class ChatTopComponent extends TopComponent {
                         toolInfo.put("tool", jsonObject.toString());
                         toolInfo.put("restUrl", rcps.getUrl());//Save url also
                         //IDEHelper.showCodeInPopup(jsonObject.toString(1), "json",toolInfo);
-                        
+                        String funcName= jsonObject.getJSONObject("function").getString("name");
                         // Replace HyperlinkDemo.openSourceCode with:
 
-                        CodeDisplayPanel newPanel = new CodeDisplayPanel(jsonObject.toString(1), "json", toolInfo);
+                        ToolDisplayPanel newPanel = new ToolDisplayPanel(jsonObject.toString(1), "json", toolInfo);
                         // Add panel to tabbed pane
-                        tabbedPane.addTab("New tool", null, newPanel, "Tool Created");
+                        tabbedPane.addTab(funcName, null, newPanel, "Tool Created");
 
                         // Set selected tab if needed
                         //tabbedPane.setSelectedIndex(newPanel);

@@ -14,12 +14,8 @@ import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import javax.swing.*;
 import java.awt.*;
-import java.util.Map;
-import javax.swing.table.DefaultTableModel;
-import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
-import org.fife.ui.rtextarea.RTextScrollPane;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.swing.table.DefaultTableModel;
@@ -28,11 +24,26 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class CodeDisplayPanel extends JPanel {
+public class ToolDisplayPanel extends JPanel {
 
-    public CodeDisplayPanel(String code, String language, Map<String, Object> codeMap) {
+    public ToolDisplayPanel(String code, String language, Map<String, Object> codeMap) {
         super();
         setLayout(new BorderLayout()); // Set layout to BorderLayout for this panel
+        
+        
+        JComboBox<String> functionDropDown = new JComboBox<>();
+        functionDropDown.setEditable(false);
+        functionDropDown.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    JOptionPane.showMessageDialog(null, "You selected: " + e.getItem().toString());
+                }
+            }
+        });
+        
+        
+        functionDropDown.setModel(new DefaultComboBoxModel<>(new String[] {"function1", "function2"}));
 
         // Create components (same as your popup logic)
         DefaultTableModel tableModel = new DefaultTableModel();
@@ -59,6 +70,7 @@ public class CodeDisplayPanel extends JPanel {
         JPanel tablePanelWithInput = new JPanel(new BorderLayout());
         tablePanelWithInput.add(tableScrollPane, BorderLayout.CENTER);
         tablePanelWithInput.add(inputField, BorderLayout.SOUTH);
+        tablePanelWithInput.add(functionDropDown, BorderLayout.NORTH);
 
         // Add components to the main panel
         add(codeScrollPane, BorderLayout.NORTH); // Text area at top
@@ -68,32 +80,30 @@ public class CodeDisplayPanel extends JPanel {
         JButton copyButton = new JButton("Copy");
         JButton toolsButton = new JButton("Test Tools Call");
         JButton closeButton = new JButton("Close");
-        
-        toolsButton.addActionListener(e->{
-               java.util.List<ChatMessage> messages = new CopyOnWriteArrayList<>();
-                final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), inputField.getText());
-                messages.add(userMessage);
-                JSONArray tools = new JSONArray();
-                tools.put(new JSONObject(code));
-                String llmResp = OllamaHelpers.callLLMChat(null, OllamaHelpers.selectModelName(), messages, tools, textArea).getJSONObject("message").getString("content");
-                JOptionPane.showMessageDialog(null, llmResp, "Success", JOptionPane.INFORMATION_MESSAGE);
+
+        toolsButton.addActionListener(e -> {
+            java.util.List<ChatMessage> messages = new CopyOnWriteArrayList<>();
+            final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), inputField.getText());
+            messages.add(userMessage);
+            JSONArray tools = new JSONArray();
+            tools.put(new JSONObject(code));
+            String llmResp = OllamaHelpers.callLLMChat(null, OllamaHelpers.selectModelName(), messages, tools, textArea).getJSONObject("message").getString("tool_calls");
+            JOptionPane.showMessageDialog(null, llmResp, "Success", JOptionPane.INFORMATION_MESSAGE);
         });
-        
-        copyButton.addActionListener(e->{
+
+        copyButton.addActionListener(e -> {
             IDEHelper.copyToClipboard(code);
-                JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Code copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
         });
 
         JPanel buttonPanel = new JPanel(); // Panel to hold buttons
         buttonPanel.add(copyButton);
         buttonPanel.add(toolsButton);
         buttonPanel.add(closeButton);
-        add(buttonPanel, BorderLayout.SOUTH); 
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-   
-    
-        public static void main(String[] args) {
+    public static void main(String[] args) {
         JFrame frame = new JFrame("Code Display");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -101,18 +111,17 @@ public class CodeDisplayPanel extends JPanel {
         String code = "System.out.println(\"Hello World!\");";
         String language = "java";
         Map<String, Object> codeMap = Map.of(
-            "Key1", "Value1",
-            "Key2", "Value2"
+                "Key1", "Value1",
+                "Key2", "Value2"
         );
 
-        CodeDisplayPanel panel = new CodeDisplayPanel(code, language, codeMap);
+        ToolDisplayPanel panel = new ToolDisplayPanel(code, language, codeMap);
         frame.getContentPane().add(panel);
 
         frame.pack();
         frame.setVisible(true);
     }
 }
-
 
 //public static void showCodeInJFrame(String code, String language, Map<String, Object> codeMap) {
 //    SwingUtilities.invokeLater(() -> {
