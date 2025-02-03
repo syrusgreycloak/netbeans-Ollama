@@ -390,9 +390,16 @@ public class ChatTopComponent extends TopComponent {
                         ProgressHandle progressHandle = ProgressHandle.createHandle("Generating Tool/Function ... ");
                         progressHandle.start();
                         RestClientHistory rcps=rcp.loadSelectedHistory();
-                        String prompt = (inputTextArea.getText().isBlank() ? "Use the data provided and restructure it in the JSON Schema provided. Do not make voolean as enum. "
-                                + "Do not add empty enum. Enum is only applicable for string.\n" +
-                                "Output should be in JSON\n.Schema: \\n"+OllamaHelpers.TOOL_FORMAT : inputTextArea.getText())+"\n Raw data-> "+rcps.getRequest() ;
+                        String prompt = (inputTextArea.getText().isBlank() ? "Restructure the provided raw data into the specified JSON Schema format, ensuring the following conditions are met:\n" +
+"\n" +
+"1. Boolean values should be represented as standard booleans (true/false) and not as enums.\n" +
+"2. Empty enums should not be included—only define \"enum\" where applicable for string values.\n" +
+"3. Maintain accuracy and completeness—all necessary properties must be included as per the schema definition.\n" +
+"4. Preserve the intended meaning and structure—the transformation should not alter data semantics.\n" +
+"5. Output must be valid JSON that adheres strictly to the provided schema.\n" +
+"\n" +
+"Schema:\n"+OllamaHelpers.TOOL_FORMAT : inputTextArea.getText())+"\n Raw data-> "+rcps.getRequest()
+                                +"\n Transform the raw data into the specified JSON schema format, ensuring all conditions above are met. The output must be a properly structured JSON." ;
                         
                         JSONObject codeSummary = OllamaHelpers.makeNonStreamedRequest(selectedModel, prompt,true);
                         //  appendText(codeSummary.toString() + "\n");
