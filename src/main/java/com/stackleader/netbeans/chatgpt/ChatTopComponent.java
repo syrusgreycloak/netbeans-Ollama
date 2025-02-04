@@ -306,9 +306,69 @@ public class ChatTopComponent extends TopComponent {
             }
         });
         actionsPanel.add(searchButton);
+        
+         //OCR action
+        JButton ocrButton = new JButton(ImageUtilities.loadImageIcon("icons/OCR.png", true));
+        ocrButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+
+                    JFileChooser fileChooser = new JFileChooser();
+
+                    // Set the file filter to allow only image files
+                    FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                            "Image Files (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"
+                    );
+                    fileChooser.setFileFilter(filter);
+
+                    // Open the file chooser dialog
+                    int result = fileChooser.showOpenDialog(null);
+
+                    if (result == JFileChooser.APPROVE_OPTION) {
+                        File selectedFile = fileChooser.getSelectedFile();
+                        System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
+                        String model = "bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision
+                        String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
+                        // Convert image to Base64
+                        String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
+
+                        // Create JSON payload
+                        String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
+
+                        // Make the POST request and handle the response
+                        String response = callLLMVision(jsonPayload);
+                        JSONObject jresp = new JSONObject(response);
+                        String llmresp = jresp.getJSONObject("message").getString("content");
+                        System.out.println("Response: " + response);
+                        appendText("\n" + jresp.getJSONObject("message").getString("content") + "\n");
+                        //Add Image OCR data to memory
+                        List<String> chat1 = Arrays.asList(llmresp);
+                        double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
+                        chat1 = Arrays.asList(llmresp, selectedFile.getAbsolutePath());
+                        //The key for storage is Project-name and the sys-millisec
+                        store.storeChat(selectedFile.getName(), chat1, embedding1);
+                        appendText("[+m]\n");
+
+                        //Display image
+                        PDFReaderUtils.displayImageWithLabel(selectedFile, null, llmresp);
+                    } else {
+                        System.out.println("No file selected.");
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                
+            }
+        });
+        actionsPanel.add(ocrButton);
 
         return actionsPanel;
     }
+    
+    
+   
 
     private void handleOptionsButtonClick() {
         Configuration config = Configuration.getInstance();
@@ -379,7 +439,7 @@ public class ChatTopComponent extends TopComponent {
         buttonsPanel.add(generateButton);
         
         // Buttons Panel 
-        JButton generateToolButton = new JButton("Generate Tool");
+        JButton generateToolButton = new JButton("Generate Tool(alpha)");
         generateToolButton.addActionListener(e -> {
             String selectedModel = (String) modelSelection.getSelectedItem();
             RequestProcessor.getDefault().post(new Runnable() {
@@ -688,8 +748,8 @@ public class ChatTopComponent extends TopComponent {
         JButton resetButton = createResetButton();
         buttonPanel.add(resetButton, gbc);
         gbc.gridy++;
-        JButton imageButton = createImageAddButton();
-        buttonPanel.add(imageButton, gbc);
+//        JButton imageButton = createImageAddButton();//To be deleted / reused
+//        buttonPanel.add(imageButton, gbc);
 
 //        gbc.gridy++;
 //        JButton submitButton = createSubmitButton();
@@ -713,64 +773,19 @@ public class ChatTopComponent extends TopComponent {
         return resetButton;
     }
 
-    private JButton createImageAddButton() {
-        final JButton resetButton = createButton("Image-OCR");
-        resetButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                try {
-
-                    JFileChooser fileChooser = new JFileChooser();
-
-                    // Set the file filter to allow only image files
-                    FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                            "Image Files (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"
-                    );
-                    fileChooser.setFileFilter(filter);
-
-                    // Open the file chooser dialog
-                    int result = fileChooser.showOpenDialog(null);
-
-                    if (result == JFileChooser.APPROVE_OPTION) {
-                        File selectedFile = fileChooser.getSelectedFile();
-                        System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
-                        String model = "llama3.2-vision";
-                        String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
-                        // Convert image to Base64
-                        String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
-
-                        // Create JSON payload
-                        String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
-
-                        // Make the POST request and handle the response
-                        String response = callLLMVision(jsonPayload);
-                        JSONObject jresp = new JSONObject(response);
-                        String llmresp = jresp.getJSONObject("message").getString("content");
-                        System.out.println("Response: " + response);
-                        appendText("\n" + jresp.getJSONObject("message").getString("content") + "\n");
-                        //Add Image OCR data to memory
-                        List<String> chat1 = Arrays.asList(llmresp);
-                        double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
-                        chat1 = Arrays.asList(llmresp, selectedFile.getAbsolutePath());
-                        //The key for storage is Project-name and the sys-millisec
-                        store.storeChat(selectedFile.getName(), chat1, embedding1);
-                        appendText("[+m]\n");
-
-                        //Display image
-                        PDFReaderUtils.displayImageWithLabel(selectedFile, null, llmresp);
-                    } else {
-                        System.out.println("No file selected.");
-                    }
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-
-            }
-        });
-        return resetButton;
-    }
+    // TO BE DELATED
+//    private JButton createImageAddButton() {
+//        final JButton resetButton = createButton("Image-OCR");
+//        resetButton.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//
+//            
+//
+//            }
+//        });
+//        return resetButton;
+//    }
 
     private JButton createSubmitButton() {
         final JButton submitButton = createButton("Submit");
@@ -817,6 +832,7 @@ public class ChatTopComponent extends TopComponent {
     private JScrollPane createInputScrollPane() {
         inputTextArea = new JTextArea();
         inputTextArea.setWrapStyleWord(true);
+        inputTextArea.setLineWrap(true);
         inputTextArea.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {

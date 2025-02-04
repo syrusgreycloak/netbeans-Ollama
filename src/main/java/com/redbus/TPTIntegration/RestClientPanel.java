@@ -30,15 +30,22 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.prefs.Preferences;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rtextarea.RTextArea;
 import org.json.JSONObject;
 import org.openide.util.Exceptions;
 
 public class RestClientPanel extends JPanel {
 
     private JTextField urlField;
-    private JTextArea requestBodyArea;
+     private final JTable headerTable = new JTable(new DefaultTableModel(
+            new Object[][]{},
+            new String[]{"Header", "Value"}
+        ));
+    private RSyntaxTextArea requestBodyArea;
     private JTextPane responseArea;
     private JTable historyTable;
     private DefaultTableModel historyTableModel;
@@ -61,11 +68,28 @@ public class RestClientPanel extends JPanel {
         buttonPanel.add(getButton);
         buttonPanel.add(postButton);
         urlPanel.add(buttonPanel, BorderLayout.EAST);
+        // Header Panel
+ 
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBorder(BorderFactory.createTitledBorder("Headers"));
+        addHeaderButtons(headerPanel); // Your method to add buttons
+        
+        // Set up the scroll pane and make sure only 3 rows are visible
+        JScrollPane headerScrollPane = new JScrollPane(headerTable);
+        // Set preferred size for headerScrollPane, where height is calculated based on row height
+        int preferredHeight = (int)headerTable.getRowHeight() * 6;
+        Dimension prefSize = new Dimension(200, preferredHeight); // Width can be adjusted as needed
+        headerScrollPane.setPreferredSize(prefSize);
+        
+        headerPanel.add(headerScrollPane);
+        // Add the header panel to the URL Panel
+        urlPanel.add(headerPanel, BorderLayout.SOUTH); 
 
         // Request Body Panel
         JPanel requestPanel = new JPanel(new BorderLayout());
         requestPanel.setBorder(BorderFactory.createTitledBorder("Request Body (POST)"));
-        requestBodyArea = new JTextArea(10, 30);
+        requestBodyArea = new RSyntaxTextArea(10, 30);
+        requestBodyArea.setSyntaxEditingStyle(IDEHelper.getSyntaxStyle("json"));
         requestPanel.add(new JScrollPane(requestBodyArea), BorderLayout.CENTER);
 
         // Response Panel
@@ -79,7 +103,7 @@ public class RestClientPanel extends JPanel {
         // History Panel
          // Bottom panel for history table
         JPanel historyPanel = new JPanel(new BorderLayout());
-        historyTableModel = new DefaultTableModel(new String[]{"ID", "Method", "URL","Request","Response"}, 0);
+        historyTableModel = new DefaultTableModel(new String[]{"ID", "Method", "URL","Request","Response","Headers"}, 0);
         historyTable = new JTable(historyTableModel);
         historyPanel.setBorder(BorderFactory.createTitledBorder("History"));
         historyPanel.add(new JScrollPane(historyTable), BorderLayout.CENTER);
@@ -131,6 +155,67 @@ public class RestClientPanel extends JPanel {
         getButton.addActionListener(e -> performGetRequest());
         postButton.addActionListener(e -> performPostRequest());
     }
+    
+        private void addHeaderButtons(JPanel panel) {
+        JButton addButton = new JButton("Add Header");
+        JButton removeButton = new JButton("Remove Selected");
+
+        addButton.addActionListener(e -> {
+            String headerName = JOptionPane.showInputDialog(this, "Enter header name:");
+            if (headerName != null && !headerName.isEmpty()) {
+                String headerValue = JOptionPane.showInputDialog(this, "Enter value for '" + headerName + "':");
+                ((DefaultTableModel)headerTable.getModel()).addRow(new Object[]{headerName, headerValue});
+            }
+        });
+
+        removeButton.addActionListener(e -> {
+            int selectedRow = headerTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                ((DefaultTableModel)headerTable.getModel()).removeRow(selectedRow);
+            } else {
+                JOptionPane.showMessageDialog(this, "No row selected to remove.");
+            }
+        });
+
+        panel.add(addButton);
+        panel.add(removeButton);
+    }
+        
+        private HashMap<String, String> parseHeadersTable(DefaultTableModel model) {
+    HashMap<String, String> headers = new HashMap<>();
+    for (int i = 0; i < model.getRowCount(); i++) {
+        String key = model.getValueAt(i, 0).toString().trim();
+        String value = model.getValueAt(i, 1).toString().trim();
+        if (!key.isEmpty()) {
+            headers.put(key, value);
+        }
+    }
+    return headers;
+}
+        
+            private HashMap<String, String> parseHeaders(String text) {
+        HashMap<String, String> headers = new HashMap<>();
+        String[] lines = text.split("\\r?\\n");
+        for (String line : lines) {
+            if (!line.isEmpty()) {
+                int separatorIndex = line.indexOf(": ");
+                if (separatorIndex != -1 && separatorIndex < line.length() - 2) {
+                    String key = line.substring(0, separatorIndex);
+                    String value = line.substring(separatorIndex + 2).trim();
+                    headers.put(key.trim(), value);
+                }
+            }
+        }
+        return headers;
+    }
+            
+            private String formatHeaders(HashMap<String, String> headers) {
+    StringBuilder sb = new StringBuilder();
+    for (String key : headers.keySet()) {
+        sb.append(key).append(": ").append(headers.get(key)).append("\n");
+    }
+    return sb.toString();
+}
 
     private void performGetRequest() {
         String url = urlField.getText().trim();
@@ -140,13 +225,13 @@ public class RestClientPanel extends JPanel {
             // Save to history
             String id = String.valueOf(System.currentTimeMillis());
             taskStore.addRestClientHistory(id, "GET", url,"", response);
-            addHistoryToTable(id, "GET", url,"",response);
+            addHistoryToTable(id, "GET", url,"",response,parseHeadersTable( (DefaultTableModel) headerTable.getModel()));
         } catch (Exception e) {
             displayFormattedResponse("Error: " + e.getMessage());
             // Save to history
             String id = String.valueOf(System.currentTimeMillis());
             taskStore.addRestClientHistory(id, "GET", url,"", e.getMessage());
-            addHistoryToTable(id, "GET", url,"",e.getMessage());
+            addHistoryToTable(id, "GET", url,"",e.getMessage(),parseHeadersTable( (DefaultTableModel) headerTable.getModel()));
         }
     }
 
@@ -160,13 +245,13 @@ public class RestClientPanel extends JPanel {
             // Save to history
             String id = String.valueOf(System.currentTimeMillis());
             taskStore.addRestClientHistory(id, "POST", url,requestBody, response);
-            addHistoryToTable(id, "POST", url,requestBody,response);
+            addHistoryToTable(id, "POST", url,requestBody,response,parseHeadersTable( (DefaultTableModel) headerTable.getModel()));
         } catch (Exception e) {
             displayFormattedResponse("Error: " + e.getMessage());
             // Save to history
             String id = String.valueOf(System.currentTimeMillis());
             taskStore.addRestClientHistory(id, "POST", url,requestBody, e.getMessage());
-            addHistoryToTable(id, "POST", url,requestBody, e.getMessage());
+            addHistoryToTable(id, "POST", url,requestBody, e.getMessage(),parseHeadersTable( (DefaultTableModel) headerTable.getModel()));
             
         }
     }
@@ -178,6 +263,14 @@ public class RestClientPanel extends JPanel {
         connection.setRequestMethod(method);
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setDoOutput("POST".equals(method));
+        
+        // Add Headers
+        DefaultTableModel model = (DefaultTableModel) headerTable.getModel();
+        for(int i=0; i < model.getRowCount(); i++) {
+            String key = model.getValueAt(i, 0).toString().trim();
+            String value = model.getValueAt(i, 1).toString().trim();
+            if (!key.isEmpty()) connection.setRequestProperty(key, value);
+        }
 
         if (body != null && !body.isEmpty()) {
             try (OutputStream os = connection.getOutputStream()) {
@@ -226,14 +319,21 @@ public class RestClientPanel extends JPanel {
     }
 
        
-       private void addHistoryToTable(String id, String method, String url,String request, String response) {
-        historyTableModel.addRow(new Object[]{id, method, url,request,response});
+    private void addHistoryToTable(String id, String method, String url, String request, String response, HashMap<String, String> headers) {
+        StringBuilder headerStr = new StringBuilder();
+        for (String key : headers.keySet()) {
+            headerStr.append(key).append(": ").append(headers.get(key)).append("\n");
+        }
+        
+        response=headerStr.toString()+"\n\n"+response;
+        
+        historyTableModel.addRow(new Object[]{id, method, url, request, response});
     }
 
     private void loadHistoryFromStore() {
         List<RestClientHistory> historyList = taskStore.getAllRestClientHistory();
         for (RestClientHistory history : historyList) {
-            historyTableModel.addRow(new Object[]{history.getId(), history.getMethod(), history.getUrl(),history.getRequest(),history.getResponse()});
+            historyTableModel.addRow(new Object[]{history.getId(), history.getMethod(), history.getUrl(), history.getRequest(), history.getResponse()});
         }
     }
     
