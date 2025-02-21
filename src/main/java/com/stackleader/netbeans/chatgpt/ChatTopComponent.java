@@ -328,7 +328,7 @@ public class ChatTopComponent extends TopComponent {
                     if (result == JFileChooser.APPROVE_OPTION) {
                         File selectedFile = fileChooser.getSelectedFile();
                         System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
-                        String model = "bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision
+                        String model = "llama3.2-vision";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision
                         String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
                         // Convert image to Base64
                         String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
@@ -948,20 +948,23 @@ public class ChatTopComponent extends TopComponent {
                                         if (choice.getMessage().getContent() != null) {
                                             String content = choice.getMessage().getContent();
                                             gptResponse.append(content);
-                                            if (!codeBlockIndicatorBuffer.isEmpty()) {
-                                                codeBlockIndicatorBuffer.append(content);
-                                                if (content.contains(System.lineSeparator())) {
-                                                    //flush buffer
-                                                    appendToOutputDocument(codeBlockIndicatorBuffer.toString());
-                                                    codeBlockIndicatorBuffer.setLength(0);
-                                                }
-                                            } else {
-                                                if (content.startsWith("`")) {
-                                                    codeBlockIndicatorBuffer.append(content);
-                                                } else {
-                                                    appendToOutputDocument(content);
-                                                }
-                                            }
+                                            //appendToOutputDocument(content);
+                                            outputTextArea.append(content);
+                                            appendToOutputDocumentOllama(content, false);
+//                                            if (!codeBlockIndicatorBuffer.isEmpty()) {
+//                                                codeBlockIndicatorBuffer.append(content);
+//                                                if (content.contains(System.lineSeparator())) {
+//                                                    //flush buffer
+//                                                    appendToOutputDocument(codeBlockIndicatorBuffer.toString());
+//                                                    codeBlockIndicatorBuffer.setLength(0);
+//                                                }
+//                                            } else {
+//                                                if (content.startsWith("`")) {
+//                                                    codeBlockIndicatorBuffer.append(content);
+//                                                } else {
+//                                                    appendToOutputDocument(content);
+//                                                }
+//                                            }
                                         }
                                     }
                                 }
