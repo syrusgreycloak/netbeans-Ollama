@@ -18,6 +18,13 @@ Search is added for the chat history. This can search all the history of chats a
 
 ### Gemini Models Incorporated
 
+// --- Get API Key ---
+            String apiKey = System.getenv("GEMINI");
+            if (apiKey == null || apiKey.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Error: GEMINI_API_KEY environment variable not set.", "API Key Error", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+            
 Gemini is integrated.
 
         GEMINI_MODELS.add("gemini-2.0-flash");
