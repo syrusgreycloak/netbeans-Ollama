@@ -93,16 +93,14 @@ public class OllamaHelpers {
 
         JSONArray messages = new JSONArray();
 
-       
-        
         if(GEMINI_MODELS.contains(model)){
             
               JSONObject systemUserPart = new JSONObject()
                      .put("role", "user")
-                     .put("parts", new JSONArray().put(new JSONObject().put("text", "You are a helpful customer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user.")));
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "You are a helpful application developer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user.")));
                  JSONObject systemModelPart = new JSONObject()
                      .put("role", "model")
-                     .put("parts", new JSONArray().put(new JSONObject().put("text", "Understood. I will act as a helpful customer support assistant and request clarification for tool parameters.")));
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "Understood. I will act as a helpful developer support assistant and request clarification for tool parameters.")));
                  messages.put(systemUserPart);
                  messages.put(systemModelPart);
                  
