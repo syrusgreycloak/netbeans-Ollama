@@ -16,6 +16,22 @@ Search is added for the chat history. This can search all the history of chats a
 
 ![image](https://github.com/user-attachments/assets/864161ac-d4df-43a6-82cf-53c4a4bebd44)
 
+### Gemini Models Incorporated
+
+Gemini is integrated.
+
+        GEMINI_MODELS.add("gemini-2.0-flash");
+        GEMINI_MODELS.add("gemini-2.0-flash-lite");
+        GEMINI_MODELS.add("gemini-1.5-pro");
+        GEMINI_MODELS.add("gemini-1.5-flash");
+        GEMINI_MODELS.add("gemini-1.5-flash-8b");
+        GEMINI_MODELS.add("gemma-3-1b-it");
+        GEMINI_MODELS.add("gemma-3-4b-it");
+        GEMINI_MODELS.add("gemma-3-12b-it");
+        GEMINI_MODELS.add("gemma-3-27b-it");
+
+![image](https://github.com/user-attachments/assets/65b9ab01-148f-464b-9a4e-c7627549d754)
+
 
 ### Vision OCR options is included
 
