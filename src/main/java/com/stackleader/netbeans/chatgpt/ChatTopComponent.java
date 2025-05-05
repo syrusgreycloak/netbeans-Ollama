@@ -740,7 +740,9 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.insets = new Insets(0, 5, 5, 5);
-        String[] models = OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(), new String[]{"gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-4o"});
+        String[] array = OllamaHelpers.GEMINI_MODELS.toArray(new String[0]);
+
+        String[] models = OllamaHelpers.mergeArrays(OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(), new String[]{"gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-4o"}), array);
         modelSelection = new JComboBox<>(models);
         modelSelection.setSelectedItem(models[0]);
         buttonPanel.add(modelSelection, gbc);
@@ -879,7 +881,7 @@ public class ChatTopComponent extends TopComponent {
                 appendToOutputDocument(System.lineSeparator());
                 appendToOutputDocument(userInput);
                 appendToOutputDocument(System.lineSeparator());
-                if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel)) {
+                if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel) || OllamaHelpers.GEMINI_MODELS.contains(selectedModel) ) {
 
                     List<String> usinput = Arrays.asList(userInput);
                     double[] embeddings = OllamaHelpers.getChatEmbedding(usinput); // Similar chat to query

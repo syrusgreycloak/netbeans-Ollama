@@ -50,15 +50,32 @@ public class OllamaHelpers {
     
     public static final Set<String> OLLAMA_MODELS_TOOLS=new HashSet();
     
-    static{
+    
+    public static final Set<String> GEMINI_MODELS=new HashSet();
+    
+    static {
         //LLM Settings        
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
-        if(value_name!=null) OLLAMA_EP=value_name;
-        
+        if (value_name != null) {
+            OLLAMA_EP = value_name;
+        }
+
 //        OLLAMA_MODELS_TOOLS.add("qwen2.5:1.5b");
 //        OLLAMA_MODELS_TOOLS.add("llama3.2:latest");
 //        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
 //        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
+        GEMINI_MODELS.add("gemini-2.5-pro-preview-03-25");
+        GEMINI_MODELS.add("gemini-2.5-flash-preview-04-17");
+        GEMINI_MODELS.add("gemini-2.0-flash");
+        GEMINI_MODELS.add("gemini-2.0-flash-lite");
+        GEMINI_MODELS.add("gemini-1.5-pro");
+        GEMINI_MODELS.add("gemini-1.5-flash");
+        GEMINI_MODELS.add("gemini-1.5-flash-8b");
+        GEMINI_MODELS.add("gemma-3-1b-it");
+        GEMINI_MODELS.add("gemma-3-4b-it");
+        GEMINI_MODELS.add("gemma-3-12b-it");
+        GEMINI_MODELS.add("gemma-3-27b-it");
+
     }
     
     /**
@@ -73,13 +90,45 @@ public class OllamaHelpers {
 
         JSONArray messages = new JSONArray();
 
-        messages_raw.forEach(message -> {
+       
+        
+        if(GEMINI_MODELS.contains(model)){
+            
+              JSONObject systemUserPart = new JSONObject()
+                     .put("role", "user")
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "You are a helpful customer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user.")));
+                 JSONObject systemModelPart = new JSONObject()
+                     .put("role", "model")
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "Understood. I will act as a helpful customer support assistant and request clarification for tool parameters.")));
+                 messages.put(systemUserPart);
+                 messages.put(systemModelPart);
+                 
+                 
+                   messages_raw.forEach(message -> {
+            JSONObject usermsgPart = new JSONObject()
+                     .put("role",(message.getRole().contentEquals("system")?"model":message.getRole())) // Very important to use Gemini and Ollama both togetehr in one session
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", message.getContent())));
+                
+            messages.put(usermsgPart);
+
+        });
+        
+        
+            // Show the dialog with RSyntaxTextArea embedded
+            //JOptionPane.showMessageDialog(null, "callGeminiApiAndHandleResponse(model, messages)"+model);
+            return callGeminiApiAndHandleResponse( model,  messages,  prompt,  editorPane);
+        }
+        
+        
+         messages_raw.forEach(message -> {
             JSONObject messageObject = new JSONObject();
-            messageObject.put("role", message.getRole());
+            //messageObject.put("role", message.getRole());
+            messageObject.put("role",(message.getRole().contentEquals("model")?"system":message.getRole()));// Very important to use Gemini and Ollama both togetehr in one session
             messageObject.put("content", message.getContent());
             messages.put(messageObject);
 
         });
+        
 
 //        if (tools == null) {
 //            return callLLMChat(prompt, model, messages, tools);
@@ -485,6 +534,244 @@ public class OllamaHelpers {
             JOptionPane.showConfirmDialog(null, e.getMessage());
         }
         return null;
+    }
+    
+    /**
+     * Calls the Google Gemini API and handles the response, including function calls.
+     *
+     * @param model The Gemini model name (e.g., "gemini-1.5-flash")
+     * @param conversationHistory A JSONArray containing the conversation history in Gemini format.
+     *                            Each element should be a JSONObject like:
+     *                            {"role": "user"|"model", "parts": [{"text": "..."}]}
+     * @param userInput The latest user message to add to the conversation.
+     * @param outputArea The text area to display the final text response (optional).
+     * @return JSONObject representing the last message added to the conversation
+     *         (either the model's text response or the result of a function call).
+     *         Returns null on failure.
+     */
+    public static JSONObject callGeminiApiAndHandleResponse(String model, JSONArray conversationHistory, String userInput, RSyntaxTextArea outputArea) {
+        try {
+            // --- Get API Key ---
+            String apiKey = System.getenv("GEMINI");
+            if (apiKey == null || apiKey.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Error: GEMINI_API_KEY environment variable not set.", "API Key Error", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+
+            // --- Construct Gemini Payload ---
+            JSONObject payload = new JSONObject();
+            JSONArray contentsArray = new JSONArray(conversationHistory.toString()); // Deep copy to avoid modifying original
+
+            // --- Handle System Prompt (if history is empty) ---
+            // Gemini prefers system instructions via the 'systemInstruction' field or
+            // as part of the initial turns in 'contents'. Here's one way for 'contents':
+            if (contentsArray.isEmpty()) {
+                 JSONObject systemUserPart = new JSONObject()
+                     .put("role", "user")
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "You are a helpful customer support assistant. Use the supplied tools to assist the user. Do not assume required properties values for tools, always ask for clarification to user.")));
+                 JSONObject systemModelPart = new JSONObject()
+                     .put("role", "model")
+                     .put("parts", new JSONArray().put(new JSONObject().put("text", "Understood. I will act as a helpful customer support assistant and request clarification for tool parameters.")));
+                 contentsArray.put(systemUserPart);
+                 contentsArray.put(systemModelPart);
+            }
+            // --- Alternatively, use systemInstruction field (preferred if model supports it) ---
+            // JSONObject systemInstruction = new JSONObject()
+            //      .put("parts", new JSONArray().put(new JSONObject().put("text", "System prompt here")));
+            // payload.put("systemInstruction", systemInstruction);
+
+
+            // --- Add User Message --- Not required
+//            JSONObject userMessage = new JSONObject();
+//            userMessage.put("role", "user");
+//            JSONArray userParts = new JSONArray();
+//            userParts.put(new JSONObject().put("text", userInput));
+//            userMessage.put("parts", userParts);
+//            contentsArray.put(userMessage);
+
+            payload.put("contents", contentsArray);
+            
+            JOptionPane.showMessageDialog(null, "callGeminiApiAndHandleResponse "+payload.toString(1));
+
+            // --- Add Tools ---
+//            if (IDEHelper.getFunctionHandlers() != null && !IDEHelper.getFunctionHandlers().isEmpty()) {
+//                JSONArray functionDeclarationsArray = new JSONArray();
+//                for (FunctionHandler handler : IDEHelper.getFunctionHandlers().values()) {
+//                    // Assuming getFunctionJSON() returns the declaration in the format Gemini expects:
+//                    // { "name": "...", "description": "...", "parameters": { ... OpenAPI Schema ... } }
+//                    functionDeclarationsArray.put(handler.getFunctionJSON());
+//                }
+//                if (functionDeclarationsArray.length() > 0) {
+//                     JSONObject toolsObject = new JSONObject();
+//                     toolsObject.put("functionDeclarations", functionDeclarationsArray);
+//                     payload.put("tools", new JSONArray().put(toolsObject)); // Gemini expects 'tools' to be an array containing the tool config
+//                }
+//            }
+             // --- Optional: Add tool configuration (e.g., auto-calling) ---
+            // JSONObject toolConfig = new JSONObject();
+            // toolConfig.put("functionCallingConfig", new JSONObject().put("mode", "AUTO")); // Or "ANY" or "NONE"
+            // payload.put("toolConfig", toolConfig);
+
+
+            System.out.println("Gemini Request Payload:");
+            System.out.println(payload.toString(2)); // Pretty print JSON
+
+            // --- API Call ---
+            String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
+            URL url = new URL(apiUrl);
+
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
+
+            // Send JSON payload
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] inputBytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+                os.write(inputBytes, 0, inputBytes.length);
+            }
+
+            // --- Handle Response ---
+            int responseCode = connection.getResponseCode();
+            StringBuilder response = new StringBuilder();
+            BufferedReader reader;
+
+            if (responseCode >= HttpURLConnection.HTTP_OK && responseCode < HttpURLConnection.HTTP_MULT_CHOICE) { // 2xx Success codes
+                 reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+            } else {
+                 reader = new BufferedReader(new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8));
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line.trim());
+            }
+            reader.close();
+
+            System.out.println("Gemini Response Code: " + responseCode);
+            System.out.println("Gemini Response Body:");
+            System.out.println(response.toString()); // Log raw response
+
+            if (responseCode >= HttpURLConnection.HTTP_OK && responseCode < HttpURLConnection.HTTP_MULT_CHOICE) {
+                JSONObject jsonResponse = new JSONObject(response.toString());
+
+                // Check for potential content filtering or lack of response
+                 if (!jsonResponse.has("candidates") || jsonResponse.getJSONArray("candidates").isEmpty()) {
+                     System.err.println("Error: No candidates found in Gemini response.");
+                     String finishReason = jsonResponse.optQuery("/promptFeedback/blockReason").toString();
+                     if (finishReason != null) {
+                        System.err.println("Potential Block Reason: " + finishReason);
+                        JOptionPane.showMessageDialog(null,"Request blocked, reason: " + finishReason, "API Error", JOptionPane.WARNING_MESSAGE);
+                     } else {
+                         JOptionPane.showMessageDialog(null,"Gemini returned no candidates.", "API Error", JOptionPane.ERROR_MESSAGE);
+                     }
+                     return null; // Indicate failure or lack of response
+                 }
+
+
+                JSONObject firstCandidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+                JSONObject modelContent = firstCandidate.getJSONObject("content"); // This is the content object from the model {role: "model", parts: [...]}
+
+                 // --- Check for Function Call ---
+                 if (modelContent.has("parts")) {
+                     JSONArray parts = modelContent.getJSONArray("parts");
+                     if (!parts.isEmpty() && parts.getJSONObject(0).has("functionCall")) {
+                         JSONObject functionCall = parts.getJSONObject(0).getJSONObject("functionCall");
+                         String functionName = functionCall.getString("name");
+                         JSONObject functionArgs = functionCall.getJSONObject("args");
+
+                         System.out.println("Function Call Requested: " + functionName);
+                         System.out.println("Arguments: " + functionArgs.toString());
+
+                         FunctionHandler handler = IDEHelper.getFunctionHandlers().get(functionName);
+                         if (handler != null) {
+                             String functionResultValue = handler.execute(functionArgs); // Execute the function
+
+                             // --- Prepare the function result message for the *next* API call ---
+                             JSONObject functionResultContent = new JSONObject();
+                             functionResultContent.put("role", "function"); // Use 'function' role for results
+
+                             JSONObject functionResponsePart = new JSONObject();
+                             functionResponsePart.put("name", functionName);
+                             // Gemini expects the result within a 'response' object, often containing structured data
+                             // For simplicity, putting the raw string result here. Adjust if your functions return JSON.
+                             functionResponsePart.put("response", new JSONObject().put("result", functionResultValue));
+
+                             JSONArray functionResultParts = new JSONArray();
+                             functionResultParts.put(new JSONObject().put("functionResponse", functionResponsePart));
+                             functionResultContent.put("parts", functionResultParts);
+
+                             System.out.println("Returning Function Result Message for next call:");
+                             System.out.println(functionResultContent.toString(2));
+
+                             // Add the model's request AND the function result to the history for the *next* call
+                             // (The calling code should handle adding these before the next iteration)
+                             // We return the function *result* message, similar to the original code's pattern.
+                             return functionResultContent;
+
+                         } else {
+                             System.err.println("Error: No handler registered for function: " + functionName);
+                             JOptionPane.showMessageDialog(null, "No handler registered for function: " + functionName, "Function Error", JOptionPane.ERROR_MESSAGE);
+                             // Decide how to proceed: maybe return an error message or stop.
+                             // Returning the model's request message might be confusing. Let's return null.
+                              return null;
+                         }
+                     }
+                 }
+
+                 // --- Handle Regular Text Response ---
+                 if (modelContent.has("parts")) {
+                    JSONArray parts = modelContent.getJSONArray("parts");
+                     if (!parts.isEmpty() && parts.getJSONObject(0).has("text")) {
+                         String responseText = parts.getJSONObject(0).getString("text");
+                         System.out.println("Model Text Response: " + responseText);
+
+                         if (outputArea != null) {
+                             final String textToAppend = responseText; // Final for lambda
+                             SwingUtilities.invokeLater(() -> {
+                                 outputArea.append(textToAppend); // Append the complete text response
+                                 outputArea.append("\n"); // Add newline for clarity
+                             });
+                         }
+
+                         // Return the model's complete content message object
+                         return modelContent;
+                     }
+                 }
+
+                 // If no function call and no text part found (shouldn't usually happen with successful response)
+                 System.err.println("Warning: Gemini response candidate has no function call or text part.");
+                 return modelContent; // Return the model content anyway
+
+            } else {
+                // --- Handle API Errors ---
+                System.err.println("POST request failed with response code: " + responseCode);
+                System.err.println("Error Response: " + response.toString());
+                 try {
+                     // Try parsing the error response as JSON
+                     JSONObject errorResponse = new JSONObject(response.toString());
+                     if (errorResponse.has("error")) {
+                         JSONObject errorDetails = errorResponse.getJSONObject("error");
+                         String errorMessage = errorDetails.optString("message", "Unknown Gemini API Error");
+                         String errorStatus = errorDetails.optString("status", "");
+                         JOptionPane.showMessageDialog(null, "Gemini API Error (" + errorStatus + "): " + errorMessage, "API Error", JOptionPane.ERROR_MESSAGE);
+                     } else {
+                         JOptionPane.showMessageDialog(null, "API request failed (Code: " + responseCode + "). Response: " + response.toString(), "API Error", JOptionPane.ERROR_MESSAGE);
+                     }
+                 } catch (Exception jsonEx) {
+                    // If error response wasn't JSON
+                    JOptionPane.showMessageDialog(null, "API request failed (Code: " + responseCode + "). Response: " + response.toString(), "API Error", JOptionPane.ERROR_MESSAGE);
+                 }
+
+                return null;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null,"An exception occurred: " + e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
     }
   
      public static String selectModelName() {
