@@ -902,8 +902,7 @@ public class ChatTopComponent extends TopComponent {
 
                     String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp, false);
-                    
-                    
+
                     //
                     //Store chat 
                     List<String> chat1 = Arrays.asList(userInput, llmResp);

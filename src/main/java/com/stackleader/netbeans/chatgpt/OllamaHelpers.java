@@ -28,12 +28,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rtextarea.RTextArea;
+import org.fife.ui.rtextarea.RTextScrollPane;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openide.util.Exceptions;
@@ -64,8 +67,8 @@ public class OllamaHelpers {
 //        OLLAMA_MODELS_TOOLS.add("llama3.2:latest");
 //        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
 //        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
-        GEMINI_MODELS.add("gemini-2.5-pro-preview-03-25");
-        GEMINI_MODELS.add("gemini-2.5-flash-preview-04-17");
+//        GEMINI_MODELS.add("gemini-2.5-pro-preview-03-25");
+ //       GEMINI_MODELS.add("gemini-2.5-flash-preview-04-17");
         GEMINI_MODELS.add("gemini-2.0-flash");
         GEMINI_MODELS.add("gemini-2.0-flash-lite");
         GEMINI_MODELS.add("gemini-1.5-pro");
@@ -116,7 +119,10 @@ public class OllamaHelpers {
         
             // Show the dialog with RSyntaxTextArea embedded
             //JOptionPane.showMessageDialog(null, "callGeminiApiAndHandleResponse(model, messages)"+model);
-            return callGeminiApiAndHandleResponse( model,  messages,  prompt,  editorPane);
+            
+           return   callGeminiStream(  model, messages,  editorPane) ;
+             
+           // return callGeminiApiAndHandleResponse( model,  messages,  prompt,  editorPane);
         }
         
         
@@ -774,6 +780,236 @@ public class OllamaHelpers {
         }
     }
   
+     private static final Logger LOGGER = Logger.getLogger(OllamaHelpers.class.getName());
+    private static final String GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
+
+    /**
+     * Calls the Gemini API for streaming content generation.
+     *
+     * @param apiKey       Your Google API Key.
+     * @param modelName    The name of the Gemini model (e.g., "gemini-1.5-flash-latest", "gemini-pro"). Note: The example uses gemini-2.0-flash, ensure this model is available or use a suitable alternative.
+     * @param prompt       The text prompt to send to the model.
+     * @param chunkConsumer A consumer function that will be called with each text chunk received from the stream.
+     *                     Can be null if you only need the final aggregated response.
+     * @return A JSONObject containing the aggregated response details after the stream finishes,
+     *         or an error structure if the call fails before streaming starts.
+     *         The structure might vary based on Gemini's final output format for aggregated streams,
+     *         currently it aggregates text. Returns empty JSONObject on stream reading error.
+     */
+    public static JSONObject callGeminiStream( String modelName, JSONArray contents,   RSyntaxTextArea outputArea) {
+        // --- Get API Key ---
+            String apiKey = System.getenv("GEMINI");
+            if (apiKey == null || apiKey.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Error: GEMINI_API_KEY environment variable not set.", "API Key Error", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+        StringBuilder aggregatedResponseText = new StringBuilder();
+        JSONObject finalResponse = new JSONObject(); // To hold aggregated info if needed
+
+        // Construct the API endpoint URL
+        // Example uses gemini-2.0-flash, ensure this is correct and available.
+        // Using gemini-1.5-flash-latest as a common default if needed.
+        // Adjust modelName parameter or this default as necessary.
+        // String effectiveModel = "gemini-2.0-flash"; // As per curl example
+        String effectiveModel = modelName; // Use the provided model name
+        String apiUrl = GEMINI_API_BASE_URL + effectiveModel + ":streamGenerateContent?alt=sse&key=" + apiKey;
+
+        HttpURLConnection connection = null;
+
+        try {
+            // --- 1. Construct JSON Payload ---
+            JSONObject payload = new JSONObject();
+//            JSONArray contents = new JSONArray();
+//            JSONObject content = new JSONObject();
+//            JSONArray parts = new JSONArray();
+//            JSONObject part = new JSONObject();
+//
+//            part.put("text", prompt);
+//            parts.put(part);
+//            content.put("parts", parts);
+//            // Optional: Add role if needed for multi-turn chat history, default is "user"
+//            // content.put("role", "user");
+//            contents.put(content);
+            payload.put("contents", contents);
+
+            // Optional: Add generationConfig, safetySettings etc. here
+            // JSONObject generationConfig = new JSONObject();
+            // generationConfig.put("temperature", 0.7);
+            // payload.put("generationConfig", generationConfig);
+
+            String jsonString = payload.toString();
+            LOGGER.log(Level.INFO, "Gemini Request URL: {0}", apiUrl);
+            LOGGER.log(Level.INFO, "Gemini Request Payload: {0}", jsonString);
+
+            // --- 2. Create URL and Open Connection ---
+            URL url = new URL(apiUrl);
+            connection = (HttpURLConnection) url.openConnection();
+
+            // --- 3. Set Request Method and Headers ---
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true); // Indicate we are sending data
+            // connection.setFixedLengthStreamingMode(jsonString.getBytes(StandardCharsets.UTF_8).length); // Good practice
+            // Gemini API might not strictly require Content-Length if chunked encoding is used implicitly by setDoOutput(true)
+
+            // Optional: Set timeouts
+            connection.setConnectTimeout(10000); // 10 seconds
+            connection.setReadTimeout(60000 * 5); // 5 minutes for potentially long streams
+
+            // --- 4. Write JSON data to output stream ---
+            try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
+                outputStream.write(jsonString.getBytes(StandardCharsets.UTF_8));
+                outputStream.flush();
+            }
+
+            // --- 5. Read Response ---
+            int responseCode = connection.getResponseCode();
+            LOGGER.log(Level.INFO, "Response Code: {0}", responseCode);
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // Use try-with-resources for BufferedReader
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // SSE format: "data: {JSON_CHUNK}"
+                        if (line.startsWith("data:")) {
+                            String jsonData = line.substring(5).trim(); // Remove "data:" prefix and trim whitespace
+                            if (!jsonData.isEmpty()) {
+                                try {
+                                    JSONObject jsonObject = new JSONObject(jsonData);
+                                    // Navigate to the text part: candidates[0].content.parts[0].text
+                                    // Add null checks and error handling for robustness
+                                    if (jsonObject.has("candidates")) {
+                                        JSONArray candidates = jsonObject.getJSONArray("candidates");
+                                        if (candidates.length() > 0) {
+                                            JSONObject firstCandidate = candidates.getJSONObject(0);
+                                            if (firstCandidate.has("content") && firstCandidate.getJSONObject("content").has("parts")) {
+                                                JSONArray responseParts = firstCandidate.getJSONObject("content").getJSONArray("parts");
+                                                if (responseParts.length() > 0 && responseParts.getJSONObject(0).has("text")) {
+                                                    String textChunk = responseParts.getJSONObject(0).getString("text");
+                                                    aggregatedResponseText.append(textChunk);
+                                                    
+                                                    if (outputArea != null) {
+                                                        // Append response to the RSyntaxTextArea
+                                                        SwingUtilities.invokeLater(() -> {
+                                                            outputArea.append(textChunk);
+                                                            //outputArea.requestFocusInWindow();
+                                                        });
+                                                    }
+
+                                                    // Call the consumer with the new chunk
+//                                                    if (chunkConsumer != null) {
+//                                                         // If updating a Swing component, wrap in invokeLater
+//                                                        // SwingUtilities.invokeLater(() -> chunkConsumer.accept(textChunk));
+//                                                        // Otherwise, call directly:
+//                                                        chunkConsumer.accept(textChunk);
+//                                                    }
+                                                }
+                                            }
+                                             // Optional: Check finishReason, safetyRatings etc. from firstCandidate if needed
+                                            // String finishReason = firstCandidate.optString("finishReason", "");
+                                            // if (!finishReason.isEmpty() && !"STOP".equals(finishReason)) { // Or other relevant reasons
+                                                 // Potentially handle different finish reasons
+                                            // }
+                                        }
+                                    }
+                                     // Optional: Check promptFeedback
+                                    // if (jsonObject.has("promptFeedback")) { ... }
+
+                                } catch (Exception e) {
+                                    LOGGER.log(Level.WARNING, "Failed to parse JSON chunk: " + jsonData, e);
+                                    // Decide how to handle parsing errors - skip chunk, log, etc.
+                                }
+                            }
+                        } else if (!line.trim().isEmpty()) {
+                            // Log lines that are not empty and don't start with "data:"
+                            // SSE uses other event types or comments (lines starting with ':')
+                            // but Gemini primarily uses 'data:'
+                            LOGGER.log(Level.FINE, "Received non-data line: {0}", line);
+                        }
+                        // Empty lines separate SSE messages, handled by readLine loop
+                    }
+                } // BufferedReader closed automatically here
+
+                // After stream finishes, populate the final response object (example)
+                 // Gemini stream doesn't typically send a single aggregated JSON at the end,
+                 // but we can structure our return value similarly to the reference if needed.
+                JSONObject aggregatedContent = new JSONObject();
+                JSONArray aggregatedParts = new JSONArray();
+                JSONObject aggregatedPart = new JSONObject();
+                aggregatedPart.put("text", aggregatedResponseText.toString());
+                aggregatedParts.put(aggregatedPart);
+                aggregatedContent.put("parts", aggregatedParts);
+                // You might want to add aggregated safety ratings or other final info if available/needed
+                finalResponse.put("aggregatedContent", aggregatedContent); // Custom structure
+                finalResponse.put("status", "success");
+
+
+            } else {
+                // Handle error response code
+                LOGGER.log(Level.SEVERE, "API call failed with response code: {0}", responseCode);
+                String errorResponse = readErrorStream(connection);
+                LOGGER.log(Level.SEVERE, "Error response body: {0}", errorResponse);
+                finalResponse.put("status", "error");
+                finalResponse.put("code", responseCode);
+                try {
+                     // Try to parse error response as JSON
+                     finalResponse.put("errorDetails", new JSONObject(errorResponse));
+                } catch (Exception e) {
+                    // If not JSON, put raw string
+                     finalResponse.put("errorDetails", errorResponse);
+                }
+            }
+
+        } catch (MalformedURLException e) {
+            LOGGER.log(Level.SEVERE, "Invalid API URL.", e);
+            finalResponse.put("status", "error");
+            finalResponse.put("message", "Malformed URL: " + e.getMessage());
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Network or IO error.", e);
+            finalResponse.put("status", "error");
+            finalResponse.put("message", "IO Exception: " + e.getMessage());
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error constructing JSON payload.", e);
+            finalResponse.put("status", "error");
+            finalResponse.put("message", " Exception: " + e.getMessage());
+       } finally {
+            // --- 6. Close connection ---
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+
+        // Log the final aggregated text
+        LOGGER.log(Level.INFO, "Aggregated Response Text:\n{0}", aggregatedResponseText.toString());
+
+        return finalResponse;
+    }
+
+    // Helper method to read error stream
+    private static String readErrorStream(HttpURLConnection connection) {
+        StringBuilder errorResponse = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                errorResponse.append(line);
+            }
+        } catch (IOException | NullPointerException e) { // getErrorStream might return null
+           LOGGER.log(Level.WARNING, "Could not read error stream.", e);
+            return "Could not read error stream (Response Code: " + getResponseCodeSafe(connection) + ")";
+        }
+        return errorResponse.toString();
+    }
+
+     // Helper to safely get response code even if connection failed earlier
+    private static int getResponseCodeSafe(HttpURLConnection connection) {
+        try {
+            return connection.getResponseCode();
+        } catch (IOException e) {
+            return -1; // Indicate failure to get code
+        }
+    }
+
      public static String selectModelName() {
         String[] modelNames = fetchModelNames(); // Call your function to get the models
 
@@ -981,9 +1217,72 @@ public class OllamaHelpers {
     public static void main(String[] args) {
         
         
+        //========================GEMINI TESTING========================
+        
+          // Replace with your actual API Key
+        String apiKey = System.getenv("GEMINI"); // Read from environment variable
+        if (apiKey == null || apiKey.isEmpty()) {
+            System.err.println("Error: GOOGLE_API_KEY environment variable not set.");
+             // Or prompt user, read from file, etc.
+             // apiKey = "YOUR_API_KEY"; // Hardcoding is discouraged
+            return;
+        }
+
+        String model = "gemini-1.5-pro"; // Or "gemini-pro", "gemini-2.0-flash" etc.
+        String prompt = "Write a very short, cute story about a curious kitten discovering a ball of yarn.";
+
+        System.out.println("--- Calling Gemini Stream API ---");
+        System.out.println("Model: " + model);
+        System.out.println("Prompt: " + prompt);
+        System.out.println("\n--- Streaming Response ---");
+
+        // Define the consumer to print chunks as they arrive
+        Consumer<String> chunkPrinter = chunk -> {
+            System.out.print(chunk); // Print chunks without newline to see aggregation
+            // System.out.flush(); // Ensure immediate output if needed
+        };
+
+        // Call the streaming method
+                    JSONArray contents = new JSONArray();
+            JSONObject content = new JSONObject();
+            JSONArray parts = new JSONArray();
+            JSONObject part = new JSONObject();
+
+            part.put("text", prompt);
+            parts.put(part);
+            content.put("parts", parts);
+            // Optional: Add role if needed for multi-turn chat history, default is "user"
+            // content.put("role", "user");
+            contents.put(content);
+        JSONObject result = callGeminiStream(  model, contents, new RSyntaxTextArea()); //May not work unless used with consumer
+
+        System.out.println("\n\n--- Stream Finished ---");
+        System.out.println("Final Result Object:");
+        // Use toString(2) for pretty printing JSON
+        System.out.println(result.toString(2));
+
+        // You can access the aggregated text from the result if needed
+        if ("success".equals(result.optString("status"))) {
+             try {
+                 String fullText = result.getJSONObject("aggregatedContent")
+                                        .getJSONArray("parts")
+                                        .getJSONObject(0)
+                                        .getString("text");
+                System.out.println("\n--- Final Aggregated Text (from result object) ---");
+                System.out.println(fullText);
+             } catch( Exception e) {
+                 System.err.println("Error extracting aggregated text from final result.");
+             }
+        } else {
+            System.err.println("\nAPI call failed. Details: " + result.opt("errorDetails"));
+        }
+    
+//=============================GEMINI TESTING COMPLETES====================
+        
+        
         //Test Vision Model
          String apiUrl = "http://localhost:11434/api/chat";
-        String model = "llama3.2-vision";
+          model = "llama3.2-vision";
         String userMessage = "what is in this image?";
         String imagePath = "C:\\Users\\manoj.kumar\\Pictures\\Screenshots\\Screenshot 2024-11-11 122916.png"; // Replace with your image path
 
