@@ -68,7 +68,7 @@ public class OllamaHelpers {
 //        OLLAMA_MODELS_TOOLS.add("nemotron-mini:latest");
 //        OLLAMA_MODELS_TOOLS.add("llama3.1:latest");
 //        GEMINI_MODELS.add("gemini-2.5-pro-preview-03-25");
- //       GEMINI_MODELS.add("gemini-2.5-flash-preview-04-17");
+        GEMINI_MODELS.add("gemini-2.5-flash-preview-04-17");
         GEMINI_MODELS.add("gemini-2.0-flash");
         GEMINI_MODELS.add("gemini-2.0-flash-lite");
         GEMINI_MODELS.add("gemini-1.5-pro");

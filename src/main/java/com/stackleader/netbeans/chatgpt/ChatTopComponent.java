@@ -1,5 +1,6 @@
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.TPTIntegration.CUAHelper;
 import com.redbus.TPTIntegration.ToolDisplayPanel;
 import com.redbus.TPTIntegration.RestClientHistory;
 import com.redbus.TPTIntegration.RestClientPanel;
@@ -168,7 +169,7 @@ public class ChatTopComponent extends TopComponent {
         
         // String currentDirectory = System.getProperty("user.dir");
         appendText("Plugin working directory: " + pluginHomeDir + "\n");
-        appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  " + pluginHomeDir + "\n");
+        appendText("Necessary models: nomic-embed-text, llama3.2:1b, llama3.2-vision  " + pluginHomeDir + "\n"); //run qwen2.5vl
         //nomic-embed-text
         //llama3.2-vision
         //llama3.2:1b
@@ -328,7 +329,7 @@ public class ChatTopComponent extends TopComponent {
                     if (result == JFileChooser.APPROVE_OPTION) {
                         File selectedFile = fileChooser.getSelectedFile();
                         System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
-                        String model = "llama3.2-vision";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision
+                        String model = "qwen2.5vl";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision run qwen2.5vl
                         String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
                         // Convert image to Base64
                         String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
@@ -342,6 +343,16 @@ public class ChatTopComponent extends TopComponent {
                         String llmresp = jresp.getJSONObject("message").getString("content");
                         System.out.println("Response: " + response);
                         appendText("\n" + jresp.getJSONObject("message").getString("content") + "\n");
+                        // Extract and parse the JSON-like array
+                        JSONArray jsonArray = CUAHelper.extractJsonArray(llmresp);
+                        if (jsonArray == null) {
+                            System.err.println("Response: " + response);
+                            System.err.println("No bounding box array found in code.");
+                            //return;
+                        }else
+                        { CUAHelper.displayImageWithBoxes(selectedFile, null, "Detected UI elements", jsonArray.toString());
+                        }
+                        
                         //Add Image OCR data to memory
                         List<String> chat1 = Arrays.asList(llmresp);
                         double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
@@ -352,6 +363,7 @@ public class ChatTopComponent extends TopComponent {
 
                         //Display image
                         PDFReaderUtils.displayImageWithLabel(selectedFile, null, llmresp);
+                        
                     } else {
                         System.out.println("No file selected.");
                     }
@@ -902,6 +914,8 @@ public class ChatTopComponent extends TopComponent {
 
                     String llmResp = OllamaHelpers.callLLMChat(null, selectedModel, messages, null, outputTextArea).getJSONObject("message").getString("content");
                     appendToOutputDocumentOllama(llmResp, false);
+                    
+                    
 
                     //
                     //Store chat 
@@ -909,6 +923,9 @@ public class ChatTopComponent extends TopComponent {
                     double[] embedding1 = OllamaHelpers.getChatEmbedding(chat1); // Similar chat to query
                     store.storeChat("NBCHAT-" + System.currentTimeMillis(), chat1, embedding1);
                     appendText("[+m]\n");
+                    
+                    final ChatMessage modelMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), llmResp); //Add system message to history
+                    messages.add(modelMessage);
                     
                     
                     return null;
