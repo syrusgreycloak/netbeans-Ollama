@@ -11,8 +11,10 @@ import java.util.regex.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Base64;
 import org.json.JSONException;
 /**
  *
@@ -80,9 +82,9 @@ public class CUAHelper {
         return null;
     }
 
-     public static void displayImageWithBoxes(File imageFile, Component parent, String label, String jsonBoxes) throws IOException {
+     public static void displayImageWithBoxes(BufferedImage originalImage, Component parent, String label, String jsonBoxes) throws IOException {
         // Load original image
-        BufferedImage originalImage = ImageIO.read(imageFile);
+        //BufferedImage originalImage = ImageIO.read(imageFile);
 
         // Draw bounding boxes on a copy of the image
         BufferedImage annotatedImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
@@ -119,11 +121,11 @@ public class CUAHelper {
         g2d.dispose();
 
         // Resize for display
-        Image scaledImage = scaleImage(annotatedImage, 1024, 800);
+        //Image scaledImage = scaleImage(annotatedImage, 1024, 800);
 
         // GUI setup
-        JLabel imageLabel = new JLabel(new ImageIcon(scaledImage));
-        JTextArea labelArea = new JTextArea(imageFile.getName() + ": " + label, 5, 80);
+        JLabel imageLabel = new JLabel(new ImageIcon(originalImage));
+        JTextArea labelArea = new JTextArea( label, 5, 80);
         labelArea.setFont(new Font("Arial", Font.PLAIN, 16));
         labelArea.setLineWrap(true);
         labelArea.setWrapStyleWord(true);
@@ -131,7 +133,7 @@ public class CUAHelper {
         labelArea.setBackground(UIManager.getColor("Panel.background"));
 
         JDialog dialog = new JDialog();
-        dialog.setTitle(imageFile.getName());
+        dialog.setTitle("Marked Image");
         dialog.setLayout(new BorderLayout());
         dialog.add(imageLabel, BorderLayout.CENTER);
         dialog.add(new JScrollPane(labelArea), BorderLayout.SOUTH);
@@ -148,5 +150,75 @@ public class CUAHelper {
     int newHeight = (int) (height * scale);
     return src.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
 }
-    
+   /**
+     * Converts an image file to a Base64-encoded string, scaling it to 800x600 or 600x800 while maintaining aspect ratio.
+     *
+     * @param imagePath Path to the image file.
+     * @return Base64-encoded string of the scaled image.
+     * @throws IOException If an error occurs during file reading or image processing.
+     */
+    public static String convertImageToBase64(String imagePath) throws IOException {
+        try {
+            BufferedImage originalImage = ImageIO.read(new File(imagePath));
+            if (originalImage == null) {
+                throw new IOException("Could not read image file: " + imagePath);
+            }
+
+            BufferedImage scaledImage = scaleImageToFit(originalImage);
+
+            return convertImageToBase64(scaledImage);
+
+        } catch (IOException e) {
+            throw new IOException("Error processing image: " + e.getMessage(), e);
+        }
+    }
+
+
+    /**
+     * Scales a BufferedImage to fit within 800x600 or 600x800, maintaining aspect ratio.
+     *
+     * @param originalImage The original BufferedImage.
+     * @return The scaled BufferedImage.
+     */
+    public static BufferedImage scaleImageToFit(BufferedImage originalImage) {
+        int originalWidth = originalImage.getWidth();
+        int originalHeight = originalImage.getHeight();
+        int maxWidth = 800;
+        int maxHeight = 600;
+        int newWidth, newHeight;
+
+        // Determine if the image is wider or taller
+        if ((double) originalWidth / originalHeight > (double) maxWidth / maxHeight) {
+            // Wider image: Scale to fit width
+            newWidth = maxWidth;
+            newHeight = (int) (originalHeight * ((double) maxWidth / originalWidth));
+        } else {
+            // Taller or square image: Scale to fit height
+            newHeight = maxHeight;
+            newWidth = (int) (originalWidth * ((double) maxHeight / originalHeight));
+        }
+
+        // Create a new BufferedImage with the calculated dimensions
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = scaledImage.createGraphics();
+        g2d.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+        g2d.dispose();
+
+        return scaledImage;
+    }
+
+
+    /**
+     * Converts a BufferedImage to a Base64-encoded string.
+     *
+     * @param image The BufferedImage to convert.
+     * @return Base64-encoded string of the image.
+     * @throws IOException If an error occurs during image processing.
+     */
+    public static String convertImageToBase64(BufferedImage image) throws IOException {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", byteArrayOutputStream); // You can change "png" to "jpg" or other supported formats
+        byte[] imageBytes = byteArrayOutputStream.toByteArray();
+        return Base64.getEncoder().encodeToString(imageBytes);
+    }
 }

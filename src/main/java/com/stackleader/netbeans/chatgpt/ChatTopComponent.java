@@ -34,6 +34,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
+import javax.imageio.ImageIO;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
@@ -331,8 +333,9 @@ public class ChatTopComponent extends TopComponent {
                         System.out.println("Selected image file: " + selectedFile.getAbsolutePath());
                         String model = "qwen2.5vl";// bsahane/Qwen2.5-VL-7B-Instruct:Q4_K_M_benxh llama3.2-vision run qwen2.5vl
                         String userMessage = inputTextArea.getText().isBlank() ? "what is in this image?" : inputTextArea.getText();
+                        BufferedImage scaledImage=CUAHelper.scaleImageToFit(ImageIO.read(new File(selectedFile.getAbsolutePath())));
                         // Convert image to Base64
-                        String base64ImageData = convertImageToBase64(selectedFile.getAbsolutePath());
+                        String base64ImageData = CUAHelper.convertImageToBase64(scaledImage);
 
                         // Create JSON payload
                         String jsonPayload = createJsonPayload(model, userMessage, base64ImageData);
@@ -349,8 +352,8 @@ public class ChatTopComponent extends TopComponent {
                             System.err.println("Response: " + response);
                             System.err.println("No bounding box array found in code.");
                             //return;
-                        }else
-                        { CUAHelper.displayImageWithBoxes(selectedFile, null, "Detected UI elements", jsonArray.toString());
+                        } else {
+                            CUAHelper.displayImageWithBoxes(scaledImage, null, "Detected UI elements", jsonArray.toString());
                         }
                         
                         //Add Image OCR data to memory
@@ -753,8 +756,10 @@ public class ChatTopComponent extends TopComponent {
         gbc.gridx = 0;
         gbc.insets = new Insets(0, 5, 5, 5);
         String[] array = OllamaHelpers.GEMINI_MODELS.toArray(new String[0]);
+        String[] arraySarvam = OllamaHelpers.SARVAM.toArray(new String[0]);
 
-        String[] models = OllamaHelpers.mergeArrays(OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(), new String[]{"gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-4o"}), array);
+        String[] models = OllamaHelpers.mergeArrays(OllamaHelpers.mergeArrays(OllamaHelpers.mergeArrays(OllamaHelpers.fetchModelNames(), new String[]{"gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-4o"}), array),arraySarvam);
+        
         modelSelection = new JComboBox<>(models);
         modelSelection.setSelectedItem(models[0]);
         buttonPanel.add(modelSelection, gbc);
@@ -893,7 +898,7 @@ public class ChatTopComponent extends TopComponent {
                 appendToOutputDocument(System.lineSeparator());
                 appendToOutputDocument(userInput);
                 appendToOutputDocument(System.lineSeparator());
-                if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel) || OllamaHelpers.GEMINI_MODELS.contains(selectedModel) ) {
+                if (OllamaHelpers.OLLAMA_MODELS.contains(selectedModel) || OllamaHelpers.GEMINI_MODELS.contains(selectedModel) || OllamaHelpers.SARVAM.contains(selectedModel)) {
 
                     List<String> usinput = Arrays.asList(userInput);
                     double[] embeddings = OllamaHelpers.getChatEmbedding(usinput); // Similar chat to query

@@ -4,6 +4,7 @@
  */
 package com.stackleader.netbeans.chatgpt;
 
+import com.redbus.TPTIntegration.SarvamHelper;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -56,6 +57,8 @@ public class OllamaHelpers {
     
     public static final Set<String> GEMINI_MODELS=new HashSet();
     
+    public static final Set<String> SARVAM=new HashSet();
+    
     static {
         //LLM Settings        
         String value_name = System.getenv("LLM_OLLAMA_HOST");//Get this from environment vaiable to add flexibility to refer to any other Ollama hosting.
@@ -78,6 +81,9 @@ public class OllamaHelpers {
         GEMINI_MODELS.add("gemma-3-4b-it");
         GEMINI_MODELS.add("gemma-3-12b-it");
         GEMINI_MODELS.add("gemma-3-27b-it");
+        
+        //SARVAM
+        SARVAM.add("sarvam-m");
 
     }
     
@@ -124,6 +130,29 @@ public class OllamaHelpers {
         }
         
         
+
+         
+        if (SARVAM.contains(model)) {
+
+            messages_raw.forEach(message -> {
+                JSONObject messageObject = new JSONObject();
+                //messageObject.put("role", message.getRole());
+                messageObject.put("role", (message.getRole().contentEquals("user") ? "user" : "assistant"));// Very important to use Gemini and Ollama both togetehr in one session
+                messageObject.put("content", message.getContent());
+                messages.put(messageObject);
+
+            });
+
+            try {
+                return SarvamHelper.call(model, messages, true, editorPane);
+
+            } catch (Exception ex) {
+                Exceptions.printStackTrace(ex);
+            }
+
+        }
+        
+        //DEFAULT OLLAMA
          messages_raw.forEach(message -> {
             JSONObject messageObject = new JSONObject();
             //messageObject.put("role", message.getRole());
@@ -132,8 +161,6 @@ public class OllamaHelpers {
             messages.put(messageObject);
 
         });
-        
-
 //        if (tools == null) {
 //            return callLLMChat(prompt, model, messages, tools);
 //        } else
@@ -171,7 +198,7 @@ public class OllamaHelpers {
             payload.put("stream", stream);
             
             JSONObject options = new JSONObject();
-            options.put("num_ctx", 4096);
+            options.put("num_ctx", 8192);
             
             payload.put("messages", messages);
             if(tools!=null){
@@ -1402,6 +1429,12 @@ public class OllamaHelpers {
      */
     public static String createJsonPayload(String model, String userMessage, String base64ImageData) {
         JSONObject jsonObject = new JSONObject();
+
+        JSONObject options = new JSONObject();
+        options.put("num_ctx", 8192);
+
+        jsonObject.put("options", options);
+
         jsonObject.put("model", model);
         jsonObject.put("stream", false);
 
