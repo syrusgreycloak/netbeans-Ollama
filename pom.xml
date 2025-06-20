@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.redbus</groupId>
     <artifactId>netbeans-ollama</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
     <packaging>nbm</packaging>
     
     <properties>
@@ -144,7 +144,16 @@
             <artifactId>json</artifactId>
             <version>20180813</version>
         </dependency>
-       
+        <dependency>
+  <groupId>com.google.adk</groupId>
+  <artifactId>google-adk</artifactId>
+  <version>0.1.0</version>
+</dependency>
+       <dependency>
+            <groupId>com.google.adk</groupId>
+            <artifactId>google-adk-dev</artifactId>
+            <version>0.1.0</version>
+        </dependency>
     <dependency>
         <groupId>org.netbeans.api</groupId>
         <artifactId>org-netbeans-modules-editor-lib2</artifactId>
