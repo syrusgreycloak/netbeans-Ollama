@@ -884,8 +884,13 @@ public class ChatTopComponent extends TopComponent {
 
                 //Get Editior
                 JTextComponent editorPane = EditorRegistry.lastFocusedComponent();
-
-                String selectedText = editorPane.getSelectedText();
+				String selectedText = null;
+				
+				// null check editorPane in case someone tries to interact with the llm without a file being open
+				if (null != editorPane) {
+					selectedText = editorPane.getSelectedText();
+				}
+				
                 if (selectedText != null && (!selectedText.isBlank())) {
                     final ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), userInput + "( in context of " + selectedText + ")");
                     messages.add(userMessage);

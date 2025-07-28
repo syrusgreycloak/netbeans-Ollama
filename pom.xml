@@ -1,23 +1,30 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.redbus</groupId>
     <artifactId>netbeans-ollama</artifactId>
     <version>0.1.6</version>
     <packaging>nbm</packaging>
-    
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <netbeans.version>RELEASE140</netbeans.version>
+        <netbeans.version>RELEASE250</netbeans.version>
         <useOSGiDependencies>false</useOSGiDependencies>
+        <java.version>21</java.version>
+        <retrofit.version>2.11.0</retrofit.version>
+        <jackson.version>2.19.2</jackson.version>
+        <httpcomponents.version>5.5</httpcomponents.version>
+        <httpcore.version>5.2.5</httpcore.version>
+        <opentelemetry.version>1.52.0</opentelemetry.version> <!-- Keep this for the BOM -->
+        <perfmark.version>0.27.0</perfmark.version>
+        <grpc.protobuf.lite.version>1.73.0</grpc.protobuf.lite.version>
     </properties>
-    
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.netbeans.utilities</groupId>
                 <artifactId>nbm-maven-plugin</artifactId>
-                <version>4.8</version>
+                <version>14.3</version>
                 <extensions>true</extensions>
             </plugin>
             <plugin>
@@ -25,8 +32,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -39,14 +46,6 @@
                     </archive>
                 </configuration>
             </plugin>
-            <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>nbm-maven-plugin</artifactId>
-            <version>4.0</version>
-            <configuration>
-                <useOSGiDependencies>false</useOSGiDependencies>
-            </configuration>
-        </plugin>
         </plugins>
     </build>
     <repositories>
@@ -59,61 +58,104 @@
             </releases>
         </repository>
     </repositories>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>${opentelemetry.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-api-annotations-common</artifactId>
             <version>${netbeans.version}</version>
-            <!--            <scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-dialogs</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-editor</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-text</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-editor-lib</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-util</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-util-ui</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-editor-settings</artifactId>
             <version>${netbeans.version}</version>
-            <!--<scope>provided</scope>-->
         </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-lib2</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-projectapi</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-projectuiapi-base</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-filesystems</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-awt</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-api-progress</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-util-lookup</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-loaders</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.fifesoft</groupId>
             <artifactId>rsyntaxtextarea</artifactId>
@@ -122,110 +164,192 @@
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.21.0</version>
+            <version>0.25.0</version>
         </dependency>
         <dependency>
             <groupId>com.theokanning.openai-gpt3-java</groupId>
             <artifactId>service</artifactId>
-            <version>0.13.0</version>  		
+            <version>0.18.2</version>
+            <exclusions>
+                <!-- Exclude the problematic json-schema library -->
+                <exclusion>
+                    <groupId>com.kjetland</groupId>
+                    <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+
         <dependency>
             <groupId>com.squareup.retrofit2</groupId>
             <artifactId>retrofit</artifactId>
-            <version>2.9.0</version>
+            <version>${retrofit.version}</version>
         </dependency>
         <dependency>
             <groupId>com.squareup.retrofit2</groupId>
             <artifactId>converter-jackson</artifactId>
-            <version>2.9.0</version>
+            <version>${retrofit.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.adk</groupId>
+            <artifactId>google-adk</artifactId>
+            <version>0.2.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.android</groupId>
+                    <artifactId>annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>animal-sniffer-annotations</artifactId>
+                </exclusion>
+                <!-- Exclude all OpenTelemetry components from google-adk's transitive dependencies -->
+                <exclusion>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud.opentelemetry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- Also exclude okhttp3.logging.HttpLoggingInterceptor -->
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>logging-interceptor</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <!-- Version is managed by opentelemetry-bom -->
+            <scope>compile</scope>
+        </dependency>
+        <!-- If you directly use other specific opentelemetry modules, add them here without version: -->
+        <!--
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        -->
+        <dependency>
+            <groupId>com.google.adk</groupId>
+            <artifactId>google-adk-dev</artifactId>
+            <version>0.2.0</version>
+            <exclusions>
+                <!-- Exclude all OpenTelemetry components from google-adk-dev's transitive dependencies -->
+                <exclusion>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud.opentelemetry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- Exclude Spring Boot starters if not explicitly needed for the NetBeans module -->
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-websocket</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>*</artifactId> <!-- Catch all Spring Framework components if needed -->
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20180813</version>
+            <version>20250517</version>
         </dependency>
-        <dependency>
-  <groupId>com.google.adk</groupId>
-  <artifactId>google-adk</artifactId>
-  <version>0.1.0</version>
-</dependency>
-       <dependency>
-            <groupId>com.google.adk</groupId>
-            <artifactId>google-adk-dev</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-    <dependency>
-        <groupId>org.netbeans.api</groupId>
-        <artifactId>org-netbeans-modules-editor-lib2</artifactId>
-        <version>RELEASE140</version>
-    </dependency>
-        <dependency>
-            <groupId>org.netbeans.api</groupId>
-            <artifactId>org-netbeans-modules-projectapi</artifactId>
-            <version>RELEASE90</version>
-        </dependency>
-        <dependency>
-            <groupId>org.netbeans.api</groupId>
-            <artifactId>org-netbeans-modules-projectuiapi-base</artifactId>
-            <version>RELEASE90</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-    <groupId>org.netbeans.api</groupId>
-    <artifactId>org-openide-filesystems</artifactId>
-    <version>RELEASE140</version>
-</dependency>
         <dependency>
             <groupId>org.mapdb</groupId>
             <artifactId>mapdb</artifactId>
-            <version>3.0.8</version>
+            <version>3.1.0</version>
         </dependency>
-        
         <dependency>
-    <groupId>org.netbeans.api</groupId>
-    <artifactId>org-openide-awt</artifactId>
-    <version>RELEASE140</version> <!-- or the version relevant to your NetBeans platform -->
-</dependency>
-    <dependency>
-        <groupId>org.netbeans.api</groupId>
-        <artifactId>org-netbeans-api-progress</artifactId>
-        <version>RELEASE140</version> <!-- Adjust version based on your NetBeans version -->
-    </dependency>
-    <dependency>
-    <groupId>org.netbeans.api</groupId>
-    <artifactId>org-openide-util-lookup</artifactId>
-    <version>RELEASE140</version>
-</dependency>
-
-<dependency>
-    <groupId>org.netbeans.api</groupId>
-    <artifactId>org-openide-loaders</artifactId>
-    <version>RELEASE140</version>
-</dependency>
-
-<dependency>
-  <groupId>org.apache.pdfbox</groupId>
-  <artifactId>pdfbox</artifactId>
-  <version>2.0.31</version>
-</dependency>
-        
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.34</version>
+        </dependency>
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
             <artifactId>swagger-parser</artifactId>
-            <version>2.1.24</version>
+            <version>2.1.31</version>
             <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>${httpcomponents.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5</artifactId>
+            <version>${httpcore.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5-h2</artifactId>
+            <version>${httpcore.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.perfmark</groupId>
+            <artifactId>perfmark-api</artifactId>
+            <version>${perfmark.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf-lite</artifactId>
+            <version>${grpc.protobuf.lite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reactivex.rxjava3</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>3.1.8</version>
         </dependency>
     </dependencies>
     <name>Netbeans-Ollama</name>
     <description>\
-    &lt;p&gt;&lt;b&gt;This plugin allows users to leverage the power of Ollama, a conversational AI model, within NetBeans IDE for enhanced development assistance and support.&lt;/b&gt;&lt;/p&gt;\
-    &lt;p&gt;Ollama is an advanced collection of conversational open weight AI models. With this plugin, developers can access the capabilities of many models like Lllama3.1, Mistral. phi3.5 etc directly from within NetBeans IDE, enabling more interactive and intuitive development workflows.&lt;/p&gt;\
-    &lt;p&gt;Key features of the Ollama Plugin include:&lt;/p&gt;\
-    &lt;ul&gt;\
-    &lt;li&gt;&lt;strong&gt;Code Generation:&lt;/strong&gt; Generate code snippets, templates, and boilerplate code with the help of Ollama&lt;/li&gt;\
-    &lt;li&gt;&lt;strong&gt;Enhanced Productivity:&lt;/strong&gt; Speed up your development process by leveraging the power of Ollam&lt;/li&gt;\
-    &lt;/ul&gt;\
-    &lt;p&gt;&lt;br&gt;\
-    For more information and updates, visit the &lt;a href="https://github.com/manojkumarredbus/netbeans-Ollama"&gt;GitHub repository&lt;/a&gt;.&lt;br&gt;&lt;br&gt;\
-    Enjoy the enhanced development experience with  Plugin!&lt;/p&gt;</description>
+&lt;p&gt;&lt;b&gt;This plugin allows users to leverage the power of Ollama, a conversational AI model, within NetBeans IDE for enhanced development assistance and support.&lt;/b&gt;&lt;/p&gt;\
+&lt;p&gt;Ollama is an advanced collection of conversational open weight AI models. With this plugin, developers can access the capabilities of many models like Lllama3.1, Mistral. phi3.5 etc directly from within NetBeans IDE, enabling more interactive and intuitive development workflows.&lt;/p&gt;\
+&lt;p&gt;Key features of the Ollama Plugin include:&lt;/p&gt;\
+&lt;ul&gt;\
+&lt;li&gt;&lt;strong&gt;Code Generation:&lt;/strong&gt; Generate code snippets, templates, and boilerplate code with the help of Ollama&lt;/li&gt;\
+&lt;li&gt;&lt;strong&gt;Enhanced Productivity:&lt;/strong&gt; Speed up your development process by leveraging the power of Ollam&lt;/li&gt;\
+&lt;/ul&gt;&lt;p&gt;&lt;br&gt;\
+        For more information and updates, visit the &lt;a href="https://github.com/manojkumarredbus/netbeans-Ollama"&gt;GitHub repository&lt;/a&gt;.&lt;br&gt;&lt;br&gt;\
+        Enjoy the enhanced development experience with Plugin!&lt;/p&gt;</description>
 </project>
